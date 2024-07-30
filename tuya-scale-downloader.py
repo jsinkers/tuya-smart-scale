@@ -62,14 +62,17 @@ def get_all_scale_data_history(device_id, page_size=10, start_time=None):
     """
     all_data = []
     page_no = 1
-    total_pages = 1  # Initialize to ensure the loop runs at least once
+    total_records_retrieved = 0
+    total_records = 1 # Initialize to ensure the loop runs at least once
 
-    while page_no <= total_pages:
+    while total_records_retrieved < total_records:
         result = get_scale_data_history(device_id, page_no, page_size, start_time)
         if result:
-            print(f"Retrieved {len(result['records'])} records from page {page_no} of {total_pages}")
+            num_records = len(result['records'])
+            total_records_retrieved += num_records
+            print(f"Retrieved {num_records} new records from page {page_no}, {total_records_retrieved} of {total_records}")
             all_data.extend(result['records'])  # Assuming 'data' contains the list of records
-            total_pages = result.get('total', 1)  # Get total number of pages from the response
+            total_records = result.get('total', 1)  # Get total number of pages from the response
             page_no += 1
         else:
             break
