@@ -82,9 +82,7 @@ def get_all_scale_data_history(device_id, page_size=10, start_time=None):
 # https://support.tuya.com/en/help/_detail/K9g77yt8rx4ii
 # retrieve a scale analysis report
 def get_analysis_report(device_id, data):
-    # todo: if no resistance, then don't get report? 
     #data = convert_scale_record(data)
-    #response = openapi._TuyaOpenAPI__request(path=f"/v1.0/scales/{device_id}/analysis-reports", method='PUT', params=data)
     response = openapi.post(path=f"/v1.0/scales/{device_id}/analysis-reports/", body=data, params=data)#, body=None)
     if response.get('success'):
         return response['result']
@@ -141,11 +139,19 @@ def update_data():
     if last_record_time:
         last_record_time += timedelta(milliseconds=1)
     
-    new_data = get_all_scale_data_history(DEVICE_ID, start_time=last_record_time)
+    new_data = get_all_scale_data_history(DEVICE_ID, start_time=last_record_time, page_size=100)
     
     if new_data:
         all_data = existing_data + new_data
         all_data = sorted(all_data, key=lambda x: x['create_time'])  # Ensure data is sorted by timestamp
+
+        # get the analysis report for the data
+        for record in all_data:
+            if 'analysis_report' in record:
+                continue
+            analysis_report = get_analysis_report(DEVICE_ID, convert_scale_record(record))
+            record['analysis_report'] = analysis_report
+        
         save_data(DATA_FILE, all_data)
         print(f"New records retrieved: {len(new_data)}")
     else:
