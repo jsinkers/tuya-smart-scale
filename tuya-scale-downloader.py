@@ -1,6 +1,6 @@
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import os
 
@@ -131,12 +131,12 @@ def get_last_record_time(data):
         return datetime.fromtimestamp(last_record['create_time'] / 1000, tz=pytz.UTC)
     return None
 
-def main():
+def update_data():
     existing_data = load_existing_data(DATA_FILE)
     last_record_time = get_last_record_time(existing_data)
     # add 1 ms to last record time to avoid retrieving the same records
     if last_record_time:
-        last_record_time += 1
+        last_record_time += timedelta(milliseconds=1)
     
     new_data = get_all_scale_data_history(DEVICE_ID, start_time=last_record_time)
     
@@ -149,4 +149,4 @@ def main():
         print("No new records retrieved.")
 
 if __name__ == '__main__':
-    main()
+    update_data()
