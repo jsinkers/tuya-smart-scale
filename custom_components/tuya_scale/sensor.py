@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .tuya_connector import TuyaOpenAPI
+from .tuya_connector.tuya_connector.openapi import TuyaOpenAPI
 
 _LOGGER = logging.getLogger(__name__)
 

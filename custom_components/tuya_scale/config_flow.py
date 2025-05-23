@@ -8,7 +8,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
-from .tuya_connector import TuyaOpenAPI
+from .tuya_connector.tuya_connector.openapi import TuyaOpenAPI
 
 _LOGGER = logging.getLogger(__name__)
 
