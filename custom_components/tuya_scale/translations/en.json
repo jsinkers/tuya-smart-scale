@@ -1,0 +1,22 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Tuya Scale Configuration",
+                "description": "Enter your Tuya API credentials",
+                "data": {
+                    "api_endpoint": "API Endpoint",
+                    "access_id": "Access ID",
+                    "access_key": "Access Key",
+                    "device_id": "Device ID"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to Tuya API"
+        },
+        "abort": {
+            "already_configured": "Device is already configured"
+        }
+    }
+} 

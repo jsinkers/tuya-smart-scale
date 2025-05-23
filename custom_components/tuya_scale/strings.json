@@ -1,0 +1,48 @@
+{
+    "entity": {
+        "sensor": {
+            "weight": {
+                "name": "Weight"
+            },
+            "height": {
+                "name": "Height"
+            },
+            "body_fat": {
+                "name": "Body Fat"
+            },
+            "bmi": {
+                "name": "BMI"
+            },
+            "body_water": {
+                "name": "Body Water"
+            },
+            "skeletal_muscle": {
+                "name": "Skeletal Muscle"
+            },
+            "muscle_mass": {
+                "name": "Muscle Mass"
+            },
+            "bmr": {
+                "name": "BMR"
+            },
+            "protein_rate": {
+                "name": "Protein Rate"
+            },
+            "subcutaneous_fat": {
+                "name": "Subcutaneous Fat"
+            },
+            "visceral_fat": {
+                "name": "Visceral Fat"
+            },
+            "body_age": {
+                "name": "Body Age"
+            },
+            "body_type": {
+                "name": "Body Type"
+            },
+            "body_score": {
+                "name": "Body Score"
+            }
+        }
+    }
+} 
