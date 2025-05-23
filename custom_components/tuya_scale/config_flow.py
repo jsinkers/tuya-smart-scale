@@ -30,7 +30,7 @@ class TuyaScaleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_ACCESS_ID],
                     user_input[CONF_ACCESS_KEY]
                 )
-                api.connect()
+                await api.connect()
                 _LOGGER.debug("Successfully connected to Tuya API")
 
                 return self.async_create_entry(

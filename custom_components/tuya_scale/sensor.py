@@ -84,7 +84,7 @@ class TuyaScaleCoordinator(DataUpdateCoordinator):
         """Fetch the latest data from the Tuya API."""
         try:
             # Get the latest record
-            response = self.api.get(
+            response = await self.api.get_async(
                 f"/v1.0/scales/{self.device_id}/datas/history",
                 params={"page_no": 1, "page_size": 1}
             )
