@@ -1,3 +1,0 @@
-[submodule "custom_components/tuya_scale/tuya_connector"]
-	path = custom_components/tuya_scale/tuya_connector
-	url = https://github.com/jsinkers/tuya-connector-python.git
