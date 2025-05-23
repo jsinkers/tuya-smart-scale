@@ -3,7 +3,7 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_DEVICE_ID
-from .tuya_connector import TuyaOpenAPI
+from .tuya_connector.tuya_connector import TuyaOpenAPI
 
 from .const import (
     DOMAIN,

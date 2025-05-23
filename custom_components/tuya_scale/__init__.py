@@ -7,7 +7,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
-from .tuya_connector import TuyaOpenAPI
+from .tuya_connector.tuya_connector import TuyaOpenAPI
 
 from .const import DOMAIN
 
