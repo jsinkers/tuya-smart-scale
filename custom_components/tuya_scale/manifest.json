@@ -6,7 +6,6 @@
   "codeowners": [],
   "requirements": [
     "requests",
-    "git+https://github.com/jsinkers/tuya-connector-python.git",
     "python-dotenv",
     "pytz"
   ],
