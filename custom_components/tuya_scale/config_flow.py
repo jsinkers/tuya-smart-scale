@@ -1,53 +1,52 @@
+"""Config flow for Tuya Scale integration."""
 from __future__ import annotations
 
-import voluptuous as vol
 import logging
-from homeassistant import config_entries
-from homeassistant.const import CONF_ACCESS_TOKEN, CONF_DEVICE_ID
-from .tuya_connector.tuya_connector import TuyaOpenAPI
+import voluptuous as vol
 
-from .const import (
-    DOMAIN,
-    CONF_API_ENDPOINT,
-    CONF_ACCESS_ID,
-    CONF_ACCESS_KEY,
-)
+from homeassistant import config_entries
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+
+from .tuya_connector import TuyaOpenAPI
 
 _LOGGER = logging.getLogger(__name__)
 
+DOMAIN = "tuya_scale"
+
 class TuyaScaleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Tuya Scale."""
+
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
+        """Handle the initial step."""
         errors = {}
 
         if user_input is not None:
             try:
-                # Test the connection
-                _LOGGER.debug("Attempting to connect to Tuya API with endpoint: %s", user_input[CONF_API_ENDPOINT])
                 api = TuyaOpenAPI(
-                    user_input[CONF_API_ENDPOINT],
-                    user_input[CONF_ACCESS_ID],
-                    user_input[CONF_ACCESS_KEY]
+                    endpoint=user_input["endpoint"],
+                    access_id=user_input["access_id"],
+                    access_secret=user_input["access_secret"],
                 )
                 await api.connect()
-                _LOGGER.debug("Successfully connected to Tuya API")
-
                 return self.async_create_entry(
-                    title=f"Tuya Scale {user_input[CONF_DEVICE_ID]}",
+                    title="Tuya Scale",
                     data=user_input,
                 )
-            except Exception as e:
-                _LOGGER.error("Failed to connect to Tuya API: %s", str(e))
+            except Exception as err:
+                _LOGGER.error("Failed to connect to Tuya API: %s", err)
                 errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_API_ENDPOINT): str,
-                vol.Required(CONF_ACCESS_ID): str,
-                vol.Required(CONF_ACCESS_KEY): str,
-                vol.Required(CONF_DEVICE_ID): str,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("endpoint"): str,
+                    vol.Required("access_id"): str,
+                    vol.Required("access_secret"): str,
+                }
+            ),
             errors=errors,
         ) 

@@ -11,7 +11,6 @@ import time
 import base64
 from typing import Any, Dict, Optional, Tuple
 
-import requests
 import aiohttp
 import logging
 
@@ -61,14 +60,12 @@ class TuyaOpenAPI:
         lang: str = "en",
     ):
         """Init TuyaOpenAPI."""
-        self.session = requests.session()
-
         self.endpoint = endpoint
         self.access_id = access_id
         self.access_secret = access_secret
         self.lang = lang
-
         self.token_info: TuyaTokenInfo = None
+        self.session: Optional[aiohttp.ClientSession] = None
 
         self.dev_channel: str = ""
 
@@ -130,73 +127,60 @@ class TuyaOpenAPI:
         )
         return sign, t
 
-    def __refresh_access_token_if_need(self, path: str):
-        if self.is_connect() is False:
-            return
-
-        if path.startswith(TO_B_TOKEN_API):
-            return
-
-        # should use refresh token?
-        now = int(time.time() * 1000)
-        expired_time = self.token_info.expire_time
-
-        if expired_time - 60 * 1000 > now:  # 1min
-            return
-
-        self.token_info.access_token = ""
-        response = self.get(
-            TO_B_REFRESH_TOKEN_API.format(self.token_info.refresh_token)
-        )
-
-        self.token_info = TuyaTokenInfo(response)
-
     def set_dev_channel(self, dev_channel: str):
         """Set dev channel."""
         self.dev_channel = dev_channel
 
-    def connect(
-        self
-    ) -> Dict[str, Any]:
-        """Connect to Tuya Cloud.
+    async def connect(self) -> None:
+        """Connect to Tuya API."""
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+        await self._get_token()
 
-        Returns:
-            response: connect response
-        """
-        response = self.get(TO_B_TOKEN_API, {"grant_type": 1})
+    async def _get_token(self) -> None:
+        """Get token."""
+        response = await self._request("GET", TO_B_TOKEN_API, {"grant_type": 1})
+        if response.get("success"):
+            self.token_info = TuyaTokenInfo(response.get("result", {}))
+        else:
+            raise Exception(f"Failed to get token: {response}")
 
-        if not response["success"]:
-            return response
+    async def _refresh_token(self) -> None:
+        """Refresh token."""
+        if not self.token_info or not self.token_info.refresh_token:
+            await self._get_token()
+            return
 
-        # Cache token info.
-        self.token_info = TuyaTokenInfo(response)
+        response = await self._request(
+            "GET", 
+            TO_B_REFRESH_TOKEN_API.format(self.token_info.refresh_token)
+        )
+        if response.get("success"):
+            self.token_info = TuyaTokenInfo(response.get("result", {}))
+        else:
+            await self._get_token()
 
-        return response
-
-    def is_connect(self) -> bool:
-        """Is connect to tuya cloud."""
-        return self.token_info is not None and len(self.token_info.access_token) > 0
-
-    def __request(
+    async def _request(
         self,
         method: str,
         path: str,
         params: Optional[Dict[str, Any]] = None,
         body: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """Request Tuya API."""
+        if self.session is None:
+            await self.connect()
 
-        self.__refresh_access_token_if_need(path)
-
-        access_token = ""
-        if self.token_info:
-            access_token = self.token_info.access_token
+        # Check if token is expired
+        if self.token_info and time.time() * 1000 >= self.token_info.expire_time:
+            await self._refresh_token()
 
         sign, t = self._calculate_sign(method, path, params, body)
         headers = {
             "client_id": self.access_id,
             "sign": sign,
             "sign_method": "HMAC-SHA256",
-            "access_token": access_token,
+            "access_token": self.token_info.access_token if self.token_info else "",
             "t": str(t),
             "lang": self.lang,
         }
@@ -214,148 +198,44 @@ class TuyaOpenAPI:
                 headers = {headers}"
         )
 
-        response = self.session.request(
-            method, self.endpoint + path, params=params, json=body, headers=headers
-        )
-
-        if response.ok is False:
-            logger.error(
-                f"Response error: code={response.status_code}, body={response.body}"
-            )
-            return None
-
-        result = response.json()
-
-        logger.debug(
-            f"Response: {json.dumps(filter_logger(result), ensure_ascii=False, indent=2)}"
-        )
-
-        if result.get("code", -1) == TUYA_ERROR_CODE_TOKEN_INVALID:
-            self.token_info = None
-            self.connect()
-
-        return result
-
-    def get(
-        self, path: str, params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Http Get.
-
-        Requests the server to return specified resources.
-
-        Args:
-            path (str): api path
-            params (map): request parameter
-
-        Returns:
-            response: response body
-        """
-        return self.__request("GET", path, params, None)
-
-    def post(
-        self, path: str, body: Optional[Dict[str, Any]] = None, params: Optional[Dict[str, Any]] = None
-
-    ) -> Dict[str, Any]:
-        """Http Post.
-
-        Requests the server to update specified resources.
-
-        Args:
-            path (str): api path
-            body (map): request body
-
-        Returns:
-            response: response body
-        """
-        return self.__request("POST", path, params, body)
-
-    def put(
-        self, path: str, body: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Http Put.
-
-        Requires the server to perform specified operations.
-
-        Args:
-            path (str): api path
-            body (map): request body
-
-        Returns:
-            response: response body
-        """
-        return self.__request("PUT", path, params, body)
-
-    def delete(
-        self, path: str, params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Http Delete.
-
-        Requires the server to delete specified resources.
-
-        Args:
-            path (str): api path
-            params (map): request param
-
-        Returns:
-            response: response body
-        """
-        return self.__request("DELETE", path, params, None)
-
-    async def connect_async(self) -> None:
-        """Connect to Tuya API."""
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-        await self._get_token_async()
-
-    async def _get_token_async(self) -> None:
-        """Get token."""
-        response = await self._request_async("GET", "/v1.0/token", {"grant_type": 1})
-        if response.get("success"):
-            self.token_info = TuyaTokenInfo(response.get("result", {}))
-        else:
-            raise Exception(f"Failed to get token: {response}")
-
-    async def _request_async(
-        self, method: str, path: str, params: Optional[Dict[str, Any]] = None, body: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Request Tuya API."""
-        if self.session is None:
-            await self.connect_async()
-
-        # Check if token is expired
-        if self.token_info and time.time() * 1000 >= self.token_info.expire_time:
-            await self._get_token_async()
-
-        # Prepare request
-        timestamp = str(int(time.time() * 1000))
-        headers = {
-            "client_id": self.access_id,
-            "sign": self._calculate_sign(method, path, timestamp, params, body)[0],
-            "sign_method": "HMAC-SHA256",
-            "access_token": self.token_info.access_token if self.token_info else "",
-            "t": timestamp,
-        }
-
         url = f"{self.endpoint}{path}"
         if params:
             url += "?" + "&".join(f"{k}={v}" for k, v in params.items())
 
         try:
             async with self.session.request(method, url, headers=headers, json=body) as response:
-                return await response.json()
+                if not response.ok:
+                    logger.error(
+                        f"Response error: code={response.status}, body={await response.text()}"
+                    )
+                    return None
+
+                result = await response.json()
+                logger.debug(
+                    f"Response: {json.dumps(result, ensure_ascii=False, indent=2)}"
+                )
+                return result
         except Exception as e:
-            _LOGGER.error("Request failed: %s", str(e))
+            logger.error("Request failed: %s", str(e))
             raise
 
-    async def get_async(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """GET request."""
-        return await self._request_async("GET", path, params)
+        return await self._request("GET", path, params)
 
-    async def post_async(self, path: str, body: Optional[Dict[str, Any]] = None, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def post(self, path: str, body: Optional[Dict[str, Any]] = None, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """POST request."""
-        return await self._request_async("POST", path, params, body)
+        return await self._request("POST", path, params, body)
 
-    async def close_async(self) -> None:
+    async def put(self, path: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """PUT request."""
+        return await self._request("PUT", path, None, body)
+
+    async def delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """DELETE request."""
+        return await self._request("DELETE", path, params)
+
+    async def close(self) -> None:
         """Close the session."""
         if self.session:
             await self.session.close()

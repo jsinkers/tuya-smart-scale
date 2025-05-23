@@ -1,154 +1,98 @@
-"""The Tuya Scale sensor platform."""
+"""The Tuya Scale integration."""
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
-import pytz
+from datetime import timedelta
 
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (
-    DOMAIN,
-    SENSOR_WEIGHT,
-    SENSOR_HEIGHT,
-    SENSOR_BODY_FAT,
-    SENSOR_BMI,
-    SENSOR_BODY_WATER,
-    SENSOR_SKELETAL_MUSCLE,
-    SENSOR_MUSCLE_MASS,
-    SENSOR_BMR,
-    SENSOR_PROTEIN_RATE,
-    SENSOR_SUBCUTANEOUS_FAT,
-    SENSOR_VISCERAL_FAT,
-    SENSOR_BODY_AGE,
-    SENSOR_BODY_TYPE,
-    SENSOR_BODY_SCORE,
-)
+from .tuya_connector import TuyaOpenAPI
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up the Tuya Scale sensors."""
-    coordinator = TuyaScaleCoordinator(hass, entry)
+SCAN_INTERVAL = timedelta(minutes=5)
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Tuya Scale from a config entry."""
+    api = TuyaOpenAPI(
+        endpoint=entry.data["endpoint"],
+        access_id=entry.data["access_id"],
+        access_secret=entry.data["access_secret"],
+    )
+
+    coordinator = TuyaScaleCoordinator(hass, api)
     await coordinator.async_config_entry_first_refresh()
 
-    sensors = [
-        TuyaScaleSensor(coordinator, SENSOR_WEIGHT, "Weight", "kg", SensorDeviceClass.WEIGHT),
-        TuyaScaleSensor(coordinator, SENSOR_HEIGHT, "Height", "cm", SensorDeviceClass.DISTANCE),
-        TuyaScaleSensor(coordinator, SENSOR_BODY_FAT, "Body Fat", "%"),
-        TuyaScaleSensor(coordinator, SENSOR_BMI, "BMI", "kg/m²"),
-        TuyaScaleSensor(coordinator, SENSOR_BODY_WATER, "Body Water", "%"),
-        TuyaScaleSensor(coordinator, SENSOR_SKELETAL_MUSCLE, "Skeletal Muscle", "%"),
-        TuyaScaleSensor(coordinator, SENSOR_MUSCLE_MASS, "Muscle Mass", "kg"),
-        TuyaScaleSensor(coordinator, SENSOR_BMR, "BMR", "kcal"),
-        TuyaScaleSensor(coordinator, SENSOR_PROTEIN_RATE, "Protein Rate", "%"),
-        TuyaScaleSensor(coordinator, SENSOR_SUBCUTANEOUS_FAT, "Subcutaneous Fat", "%"),
-        TuyaScaleSensor(coordinator, SENSOR_VISCERAL_FAT, "Visceral Fat", "%"),
-        TuyaScaleSensor(coordinator, SENSOR_BODY_AGE, "Body Age", "years"),
-        TuyaScaleSensor(coordinator, SENSOR_BODY_TYPE, "Body Type", None),
-        TuyaScaleSensor(coordinator, SENSOR_BODY_SCORE, "Body Score", None),
-    ]
+    hass.data.setdefault("tuya_scale", {})
+    hass.data["tuya_scale"][entry.entry_id] = coordinator
 
-    async_add_entities(sensors)
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
+
+    return True
 
 class TuyaScaleCoordinator(DataUpdateCoordinator):
-    """Tuya Scale data coordinator."""
+    """My custom coordinator."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        """Initialize the coordinator."""
+    def __init__(self, hass: HomeAssistant, api: TuyaOpenAPI) -> None:
+        """Initialize my coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name="Tuya Scale",
-            update_interval=timedelta(minutes=5),
+            update_interval=SCAN_INTERVAL,
         )
-        self.api = hass.data[DOMAIN][entry.entry_id]["api"]
-        self.device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
+        self.api = api
 
     async def _async_update_data(self):
-        """Fetch the latest data from the Tuya API."""
+        """Fetch data from API endpoint."""
         try:
-            # Get the latest record
-            response = await self.api.get_async(
-                f"/v1.0/scales/{self.device_id}/datas/history",
-                params={"page_no": 1, "page_size": 1}
-            )
-            
-            if response.get("success") and response["result"]["records"]:
-                return response["result"]["records"][0]
-            return None
+            await self.api.connect()
+            response = await self.api.get("/v1.0/devices/status", {"device_ids": "YOUR_DEVICE_ID"})
+            if not response or not response.get("success"):
+                raise UpdateFailed("Failed to fetch data from Tuya API")
+            return response.get("result", [])
         except Exception as err:
-            _LOGGER.error("Error fetching Tuya Scale data: %s", err)
-            return None
+            raise UpdateFailed(f"Error communicating with Tuya API: {err}")
 
-class TuyaScaleSensor(CoordinatorEntity, SensorEntity):
+class TuyaScaleSensor:
     """Representation of a Tuya Scale sensor."""
 
-    def __init__(
-        self,
-        coordinator: TuyaScaleCoordinator,
-        sensor_type: str,
-        name: str,
-        unit: str | None,
-        device_class: SensorDeviceClass | None = None,
-    ) -> None:
+    def __init__(self, coordinator: TuyaScaleCoordinator, name: str, device_id: str) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._sensor_type = sensor_type
-        self._attr_name = f"Tuya Scale {name}"
-        self._attr_unique_id = f"{coordinator.device_id}_{sensor_type}"
-        self._attr_native_unit_of_measurement = unit
-        self._attr_device_class = device_class
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self.coordinator = coordinator
+        self._name = name
+        self._device_id = device_id
+        self._state = None
 
     @property
-    def native_value(self):
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def state(self):
         """Return the state of the sensor."""
         if not self.coordinator.data:
             return None
 
-        data = self.coordinator.data
-        if self._sensor_type == SENSOR_WEIGHT:
-            return data.get("weight")
-        elif self._sensor_type == SENSOR_HEIGHT:
-            return data.get("height")
-        elif self._sensor_type == SENSOR_BODY_FAT:
-            return data.get("body_fat")
-        elif self._sensor_type == SENSOR_BMI:
-            return data.get("bmi")
-        elif self._sensor_type == SENSOR_BODY_WATER:
-            return data.get("body_water")
-        elif self._sensor_type == SENSOR_SKELETAL_MUSCLE:
-            return data.get("skeletal_muscle")
-        elif self._sensor_type == SENSOR_MUSCLE_MASS:
-            return data.get("muscle_mass")
-        elif self._sensor_type == SENSOR_BMR:
-            return data.get("bmr")
-        elif self._sensor_type == SENSOR_PROTEIN_RATE:
-            return data.get("protein_rate")
-        elif self._sensor_type == SENSOR_SUBCUTANEOUS_FAT:
-            return data.get("subcutaneous_fat")
-        elif self._sensor_type == SENSOR_VISCERAL_FAT:
-            return data.get("visceral_fat")
-        elif self._sensor_type == SENSOR_BODY_AGE:
-            return data.get("body_age")
-        elif self._sensor_type == SENSOR_BODY_TYPE:
-            return data.get("body_type")
-        elif self._sensor_type == SENSOR_BODY_SCORE:
-            return data.get("body_score")
-        return None 
+        for device in self.coordinator.data:
+            if device.get("id") == self._device_id:
+                for status in device.get("status", []):
+                    if status.get("code") == "weight":
+                        return status.get("value")
+        return None
+
+    @property
+    def unit_of_measurement(self) -> str:
+        """Return the unit of measurement."""
+        return "kg"
+
+    @property
+    def device_class(self) -> str:
+        """Return the device class."""
+        return "weight" 
