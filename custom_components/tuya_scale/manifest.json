@@ -5,10 +5,10 @@
   "dependencies": [],
   "codeowners": [],
   "requirements": [
+    "requests",
     "git+https://github.com/jsinkers/tuya-connector-python.git",
     "python-dotenv",
-    "pytz",
-    "requests"
+    "pytz"
   ],
   "version": "0.1.0",
   "config_flow": true,
