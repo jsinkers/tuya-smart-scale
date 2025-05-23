@@ -1,0 +1,23 @@
+"""Constants for the Tuya Scale integration."""
+DOMAIN = "tuya_scale"
+
+CONF_API_ENDPOINT = "api_endpoint"
+CONF_ACCESS_ID = "access_id"
+CONF_ACCESS_KEY = "access_key"
+CONF_DEVICE_ID = "device_id"
+
+# Sensor types
+SENSOR_WEIGHT = "weight"
+SENSOR_HEIGHT = "height"
+SENSOR_BODY_FAT = "body_fat"
+SENSOR_BMI = "bmi"
+SENSOR_BODY_WATER = "body_water"
+SENSOR_SKELETAL_MUSCLE = "skeletal_muscle"
+SENSOR_MUSCLE_MASS = "muscle_mass"
+SENSOR_BMR = "bmr"
+SENSOR_PROTEIN_RATE = "protein_rate"
+SENSOR_SUBCUTANEOUS_FAT = "subcutaneous_fat"
+SENSOR_VISCERAL_FAT = "visceral_fat"
+SENSOR_BODY_AGE = "body_age"
+SENSOR_BODY_TYPE = "body_type"
+SENSOR_BODY_SCORE = "body_score" 
