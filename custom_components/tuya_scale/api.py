@@ -20,12 +20,13 @@ class TuyaSmartScaleAPI:
         self.api_secret = api_secret
         self.device_id = device_id
         self.region = region
-        self.endpoint = REGIONS.get(region, REGIONS["us"])["endpoint"]
+        self.endpoint = REGIONS.get(region, REGIONS["eu"])["endpoint"]
         self.access_token = None
         self.token_expires = 0
+        self.sign_method = "HMAC-SHA256"
 
     def sign(self, method: str, path: str, params: Dict = None, body: Dict = None) -> Dict[str, str]:
-        """Calculate signature for Tuya API requests."""
+        """Calculate signature for Tuya API requests (explicitly set sign_method for v2.0 compatibility)."""
         timestamp = str(int(time.time() * 1000))
         message = self.api_key + timestamp
         
@@ -46,7 +47,7 @@ class TuyaSmartScaleAPI:
             "client_id": self.api_key,
             "signature": signature,
             "t": timestamp,
-            "sign_method": "HMAC-SHA256",
+            "sign_method": self.sign_method,
         }
         _LOGGER.debug(f"Tuya sign() for {method} {path}: t={timestamp} ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(timestamp)//1000))} UTC)")
         return headers
@@ -58,7 +59,7 @@ class TuyaSmartScaleAPI:
         # For /v1.0/token, Tuya does NOT require a signature, only client_id and sign_method
         headers = {
             "client_id": self.api_key,
-            "sign_method": "HMAC-SHA256",
+            "sign_method": self.sign_method,
         }
         url = f"{self.endpoint}/v1.0/token?grant_type=1"
         _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
