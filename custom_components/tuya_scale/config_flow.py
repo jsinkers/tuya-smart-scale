@@ -13,10 +13,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         region_options = {code: data["name"] for code, data in REGIONS.items()}
         data_schema = vol.Schema({
-            vol.Required(CONF_ACCESS_ID, description={"suggested_value": "Access ID"}): str,  # Access ID
-            vol.Required(CONF_ACCESS_KEY, description={"suggested_value": "Access Key"}): str,  # Access Key
+            vol.Required(CONF_ACCESS_ID): str,  # Access ID
+            vol.Required(CONF_ACCESS_KEY): str,  # Access Key
             vol.Required(CONF_REGION, default=DEFAULT_REGION): vol.In(region_options),
-            vol.Required(CONF_DEVICE_ID, description={"suggested_value": "Device ID"}): str,  # Device ID
+            vol.Required(CONF_DEVICE_ID): str,  # Device ID
         })
         return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
 
