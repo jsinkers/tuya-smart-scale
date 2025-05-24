@@ -5,10 +5,10 @@ from homeassistant.components.sensor import SensorDeviceClass
 API_ENDPOINT = "https://openapi.tuya.com/v1.0"
 SMART_SCALE_DEVICE_TYPE = "smart_scale"
 DEFAULT_UNIT_OF_MEASUREMENT = "kg"
-CONF_ACCESS_ID = "access_id"
-CONF_ACCESS_KEY = "access_key"
-CONF_DEVICE_ID = "device_id"
-CONF_REGION = "region"
+CONF_ACCESS_ID = "Access ID"
+CONF_ACCESS_KEY = "Access Key"
+CONF_DEVICE_ID = "Device ID"
+CONF_REGION = "Region"
 
 DOMAIN = "tuya_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
