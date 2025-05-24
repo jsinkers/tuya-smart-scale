@@ -42,13 +42,14 @@ class TuyaSmartScaleAPI:
             msg=message.encode('utf-8'),
             digestmod=hashlib.sha256
         ).hexdigest().upper()
-        
-        return {
+        headers = {
             "client_id": self.api_key,
             "signature": signature,
             "t": timestamp,
             "sign_method": "HMAC-SHA256",
         }
+        _LOGGER.debug(f"Tuya sign() for {method} {path}: t={timestamp} ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(timestamp)//1000))} UTC)")
+        return headers
 
     def get_access_token(self) -> str:
         """Get access token from Tuya API."""
