@@ -1,6 +1,6 @@
 from homeassistant import config_entries
 import voluptuous as vol
-from .const import DOMAIN, CONF_API_KEY, CONF_API_SECRET, CONF_REGION, REGIONS, DEFAULT_REGION, CONF_DEVICE_ID
+from .const import DOMAIN, CONF_ACCESS_ID, CONF_ACCESS_KEY, CONF_REGION, REGIONS, DEFAULT_REGION, CONF_DEVICE_ID
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -13,10 +13,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         region_options = {code: data["name"] for code, data in REGIONS.items()}
         data_schema = vol.Schema({
-            vol.Required(CONF_API_KEY): str,  # Access ID
-            vol.Required(CONF_API_SECRET): str,  # Access Key
+            vol.Required(CONF_ACCESS_ID, description={"suggested_value": "Access ID"}): str,  # Access ID
+            vol.Required(CONF_ACCESS_KEY, description={"suggested_value": "Access Key"}): str,  # Access Key
             vol.Required(CONF_REGION, default=DEFAULT_REGION): vol.In(region_options),
-            vol.Required(CONF_DEVICE_ID): str,  # Manual Device ID field, now using constant
+            vol.Required(CONF_DEVICE_ID, description={"suggested_value": "Device ID"}): str,  # Device ID
         })
         return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
 

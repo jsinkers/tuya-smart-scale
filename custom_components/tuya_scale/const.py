@@ -5,8 +5,8 @@ from homeassistant.components.sensor import SensorDeviceClass
 API_ENDPOINT = "https://openapi.tuya.com/v1.0"
 SMART_SCALE_DEVICE_TYPE = "smart_scale"
 DEFAULT_UNIT_OF_MEASUREMENT = "kg"
-CONF_API_KEY = "api_key"
-CONF_API_SECRET = "api_secret"
+CONF_ACCESS_ID = "access_id"
+CONF_ACCESS_KEY = "access_key"
 CONF_DEVICE_ID = "device_id"
 CONF_REGION = "region"
 

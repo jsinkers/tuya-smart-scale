@@ -7,8 +7,8 @@ from homeassistant.const import Platform
 
 from .const import (
     DOMAIN, 
-    CONF_API_KEY, 
-    CONF_API_SECRET, 
+    CONF_ACCESS_ID,  # now 'access_id'
+    CONF_ACCESS_KEY,  # now 'access_key'
     CONF_DEVICE_ID, 
     CONF_REGION
 )
@@ -22,8 +22,8 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tuya Smart Scale from a config entry."""
     api_client = TuyaSmartScaleAPI(
-        api_key=entry.data[CONF_API_KEY],
-        api_secret=entry.data[CONF_API_SECRET],
+        api_key=entry.data[CONF_ACCESS_ID],
+        api_secret=entry.data[CONF_ACCESS_KEY],
         device_id=entry.data[CONF_DEVICE_ID],
         region=entry.data.get(CONF_REGION, "us")
     )

@@ -7,7 +7,7 @@ import hashlib
 import json
 from typing import Dict, Any, List
 
-from .const import REGIONS, SMART_SCALE_DEVICE_TYPE
+from .const import REGIONS, SMART_SCALE_DEVICE_TYPE, CONF_ACCESS_ID, CONF_ACCESS_KEY
 
 _LOGGER = logging.getLogger(__name__)
 
