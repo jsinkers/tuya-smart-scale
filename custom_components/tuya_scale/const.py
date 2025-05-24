@@ -10,7 +10,7 @@ CONF_API_SECRET = "api_secret"
 CONF_DEVICE_ID = "device_id"
 CONF_REGION = "region"
 
-DOMAIN = "tuya_smart_scale"
+DOMAIN = "tuya_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
 
 # Region definitions
