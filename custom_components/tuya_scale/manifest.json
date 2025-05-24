@@ -3,6 +3,7 @@
   "name": "Tuya Scale",
   "version": "1.0.0",
   "documentation": "https://github.com/jsinkers/tuya_smart_scale",
+  "config_flow": true,
   "requirements": [
     "requests",
     "homeassistant"
