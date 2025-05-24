@@ -120,18 +120,20 @@ class TuyaSmartScaleAPI:
         url = f"{self.endpoint}/v1.0/devices/scale/records?{param_str}"
         
         response = requests.get(url, headers=headers)
-        
         if response.status_code != 200:
-            raise Exception(f"Failed to get scale records: {response.text}")
-            
+            _LOGGER.error(f"Failed to get scale records: {response.text}")
+            return []
         try:
             data = response.json()
         except Exception as e:
             _LOGGER.error(f"Failed to parse JSON response: {e}")
             return []
         # Defensive: check for 'result' and 'records' keys
-        if not data.get("result") or not data["result"].get("records"):
-            _LOGGER.error(f"Unexpected response structure: {data}")
+        if not isinstance(data, dict) or "result" not in data or not isinstance(data["result"], dict):
+            _LOGGER.error(f"Unexpected response structure (missing 'result'): {data}")
+            return []
+        if "records" not in data["result"] or not isinstance(data["result"]["records"], list):
+            _LOGGER.error(f"Unexpected response structure (missing 'records'): {data}")
             return []
         return data["result"]["records"]
 
@@ -144,14 +146,15 @@ class TuyaSmartScaleAPI:
         url = f"{self.endpoint}/v1.0/devices/scale/users?device_id={self.device_id}"
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            raise Exception(f"Failed to get scale users: {response.text}")
+            _LOGGER.error(f"Failed to get scale users: {response.text}")
+            return []
         try:
             data = response.json()
         except Exception as e:
             _LOGGER.error(f"Failed to parse JSON response for users: {e}")
             return []
-        if not data.get("result"):
-            _LOGGER.error(f"Unexpected response structure for users: {data}")
+        if not isinstance(data, dict) or "result" not in data:
+            _LOGGER.error(f"Unexpected response structure for users (missing 'result'): {data}")
             return []
         return data["result"]
         
@@ -167,7 +170,11 @@ class TuyaSmartScaleAPI:
                 user_id = user.get("user_id")
                 if not user_id:
                     continue
-                records = self.get_scale_records(user_id=user_id, limit=1)
+                try:
+                    records = self.get_scale_records(user_id=user_id, limit=1)
+                except Exception as e:
+                    _LOGGER.error(f"Error fetching records for user {user_id}: {e}")
+                    continue
                 if not records:
                     _LOGGER.warning(f"No records found for user {user_id}")
                     continue
@@ -183,7 +190,8 @@ class TuyaSmartScaleAPI:
                 result[user_id] = latest_record
             return result
         except Exception as err:
-            _LOGGER.error(f"Error fetching latest scale data: {err}")
+            import traceback
+            _LOGGER.error(f"Error fetching latest scale data: {err}\nTraceback:\n{traceback.format_exc()}")
             return {}
             
     def validate_credentials(self) -> bool:
@@ -203,6 +211,14 @@ class TuyaSmartScaleAPI:
         url = f"{self.endpoint}/v1.0/devices/scale/records/{record_id}/analysis_report"
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            raise Exception(f"Failed to get analysis report: {response.text}")
-        data = response.json()
+            _LOGGER.error(f"Failed to get analysis report: {response.text}")
+            return {}
+        try:
+            data = response.json()
+        except Exception as e:
+            _LOGGER.error(f"Failed to parse JSON response for analysis report: {e}")
+            return {}
+        if not isinstance(data, dict) or "result" not in data:
+            _LOGGER.error(f"Unexpected response structure for analysis report (missing 'result'): {data}")
+            return {}
         return data.get("result", {})
