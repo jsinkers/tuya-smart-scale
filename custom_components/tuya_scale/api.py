@@ -66,9 +66,18 @@ class TuyaSmartScaleAPI:
         if response.status_code != 200:
             raise Exception(f"Failed to get access token: {response.text}")
             
-        data = response.json()
-        self.access_token = data["result"]["access_token"]
-        self.token_expires = time.time() + data["result"]["expire_time"]
+        try:
+            data = response.json()
+        except Exception as e:
+            _LOGGER.error(f"Failed to parse JSON response for access token: {e}")
+            raise Exception(f"Failed to parse JSON response for access token: {e}")
+        
+        if not isinstance(data, dict) or "result" not in data:
+            _LOGGER.error(f"Unexpected response structure for access token (missing 'result'): {data}")
+            raise Exception(f"Unexpected response structure for access token (missing 'result'): {data}")
+        
+        self.access_token = data["result"].get("access_token")
+        self.token_expires = time.time() + data["result"].get("expire_time", 0)
         
         return self.access_token
 
