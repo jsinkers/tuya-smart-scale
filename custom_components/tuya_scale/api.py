@@ -25,19 +25,22 @@ class TuyaSmartScaleAPI:
         self.token_expires = 0
         self.sign_method = "HMAC-SHA256"
 
-    def sign(self, method: str, path: str, params: Dict = None, body: Dict = None) -> Dict[str, str]:
-        """Calculate signature for Tuya API requests (explicitly set sign_method for v2.0 compatibility)."""
-        timestamp = str(int(time.time() * 1000))
-        message = self.api_key + timestamp
-        
-        if params:
-            sorted_params = sorted(params.items(), key=lambda x: x[0])
-            for param_name, param_value in sorted_params:
-                message += param_name + str(param_value)
-        
+    def sign(self, method: str, path: str, params: Dict = None, body: Dict = None, access_token: str = None) -> Dict[str, str]:
+        """Calculate signature for Tuya v2.0 API requests."""
+        method = method.upper()
+        t = str(int(time.time() * 1000))
+        # Canonical string to sign
         if body:
-            message += json.dumps(body)
-            
+            body_str = json.dumps(body, separators=(",", ":"))
+        else:
+            body_str = ''
+        body_sha256 = hashlib.sha256(body_str.encode('utf-8')).hexdigest()
+        str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
+        # Message
+        message = self.api_key
+        if access_token:
+            message += access_token
+        message += t + str_to_sign
         signature = hmac.new(
             self.api_secret.encode('utf-8'),
             msg=message.encode('utf-8'),
@@ -45,11 +48,13 @@ class TuyaSmartScaleAPI:
         ).hexdigest().upper()
         headers = {
             "client_id": self.api_key,
-            "signature": signature,
-            "t": timestamp,
+            "t": t,
             "sign_method": self.sign_method,
+            "sign": signature,
         }
-        _LOGGER.debug(f"Tuya sign() for {method} {path}: t={timestamp} ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(timestamp)//1000))} UTC)")
+        if access_token:
+            headers["access_token"] = access_token
+        _LOGGER.debug(f"Tuya v2 sign() for {method} {path}: t={t} ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(t)//1000))} UTC) str_to_sign={str_to_sign} message={message}")
         return headers
 
     def get_access_token(self) -> str:
