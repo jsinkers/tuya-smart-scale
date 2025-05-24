@@ -124,8 +124,16 @@ class TuyaSmartScaleAPI:
         if response.status_code != 200:
             raise Exception(f"Failed to get scale records: {response.text}")
             
-        data = response.json()
-        return data.get("result", {}).get("records", [])
+        try:
+            data = response.json()
+        except Exception as e:
+            _LOGGER.error(f"Failed to parse JSON response: {e}")
+            return []
+        # Defensive: check for 'result' and 'records' keys
+        if not data.get("result") or not data["result"].get("records"):
+            _LOGGER.error(f"Unexpected response structure: {data}")
+            return []
+        return data["result"]["records"]
 
     def get_scale_users(self) -> List[Dict[str, Any]]:
         """Get users for this scale device."""
