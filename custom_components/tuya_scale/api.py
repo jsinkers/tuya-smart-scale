@@ -54,31 +54,27 @@ class TuyaSmartScaleAPI:
         """Get access token from Tuya API."""
         if self.access_token and time.time() < self.token_expires - 60:
             return self.access_token
-            
-        headers = self.sign("GET", "/v1.0/token")
+        # For /v1.0/token, Tuya does NOT require a signature, only client_id and sign_method
+        headers = {
+            "client_id": self.api_key,
+            "sign_method": "HMAC-SHA256",
+        }
         url = f"{self.endpoint}/v1.0/token?grant_type=1"
-        
-        response = requests.get(
-            url,
-            headers=headers
-        )
-        
+        _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
+        response = requests.get(url, headers=headers)
         if response.status_code != 200:
+            _LOGGER.error(f"Failed to get access token: {response.text}")
             raise Exception(f"Failed to get access token: {response.text}")
-            
         try:
             data = response.json()
         except Exception as e:
             _LOGGER.error(f"Failed to parse JSON response for access token: {e}")
             raise Exception(f"Failed to parse JSON response for access token: {e}")
-        
         if not isinstance(data, dict) or "result" not in data:
             _LOGGER.error(f"Unexpected response structure for access token (missing 'result'): {data}")
             raise Exception(f"Unexpected response structure for access token (missing 'result'): {data}")
-        
         self.access_token = data["result"].get("access_token")
         self.token_expires = time.time() + data["result"].get("expire_time", 0)
-        
         return self.access_token
 
     def get_device_info(self) -> Dict[str, Any]:
