@@ -138,51 +138,52 @@ class TuyaSmartScaleAPI:
     def get_scale_users(self) -> List[Dict[str, Any]]:
         """Get users for this scale device."""
         token = self.get_access_token()
-        
         params = {"device_id": self.device_id}
         headers = self.sign("GET", "/v1.0/devices/scale/users", params=params)
         headers["access_token"] = token
-        
         url = f"{self.endpoint}/v1.0/devices/scale/users?device_id={self.device_id}"
         response = requests.get(url, headers=headers)
-        
         if response.status_code != 200:
             raise Exception(f"Failed to get scale users: {response.text}")
-            
-        data = response.json()
-        return data.get("result", [])
+        try:
+            data = response.json()
+        except Exception as e:
+            _LOGGER.error(f"Failed to parse JSON response for users: {e}")
+            return []
+        if not data.get("result"):
+            _LOGGER.error(f"Unexpected response structure for users: {data}")
+            return []
+        return data["result"]
         
     def get_latest_data(self) -> Dict[str, Dict[str, Any]]:
         """Get latest measurement data for all users of this scale, including analysis report."""
         try:
-            # Get all users for this scale
             users = self.get_scale_users()
-            
-            # Get the most recent record for each user
+            if not users:
+                _LOGGER.error("No users found for this scale device.")
+                return {}
             result = {}
             for user in users:
                 user_id = user.get("user_id")
                 if not user_id:
                     continue
-                    
                 records = self.get_scale_records(user_id=user_id, limit=1)
-                if records:
-                    latest_record = records[0]
-                    # Fetch and attach analysis report
-                    record_id = latest_record.get("id")
-                    if record_id:
-                        try:
-                            analysis_report = self.get_analysis_report(record_id)
-                            latest_record["analysis_report"] = analysis_report
-                        except Exception as e:
-                            _LOGGER.warning(f"Could not fetch analysis report for record {record_id}: {e}")
-                    latest_record.update({"nickname": user.get("nickname")})
-                    result[user_id] = latest_record
-                    
+                if not records:
+                    _LOGGER.warning(f"No records found for user {user_id}")
+                    continue
+                latest_record = records[0]
+                record_id = latest_record.get("id")
+                if record_id:
+                    try:
+                        analysis_report = self.get_analysis_report(record_id)
+                        latest_record["analysis_report"] = analysis_report
+                    except Exception as e:
+                        _LOGGER.warning(f"Could not fetch analysis report for record {record_id}: {e}")
+                latest_record.update({"nickname": user.get("nickname")})
+                result[user_id] = latest_record
             return result
-            
         except Exception as err:
-            _LOGGER.error("Error fetching latest scale data: %s", err)
+            _LOGGER.error(f"Error fetching latest scale data: {err}")
             return {}
             
     def validate_credentials(self) -> bool:
