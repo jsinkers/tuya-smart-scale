@@ -1,98 +1,70 @@
-"""The Tuya Scale integration."""
-from __future__ import annotations
+"""Sensor platform for Tuya Smart Scale integration."""
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+import datetime
 
-import logging
-from datetime import timedelta
+from .const import DOMAIN, SENSOR_TYPES, ALL_SENSOR_TYPES
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from .tuya_connector.tuya_connector.openapi import TuyaOpenAPI
-
-_LOGGER = logging.getLogger(__name__)
-
-SCAN_INTERVAL = timedelta(minutes=5)
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Tuya Scale from a config entry."""
-    api = TuyaOpenAPI(
-        endpoint=entry.data["endpoint"],
-        access_id=entry.data["access_id"],
-        access_secret=entry.data["access_secret"],
-    )
-
-    coordinator = TuyaScaleCoordinator(hass, api)
-    await coordinator.async_config_entry_first_refresh()
-
-    hass.data.setdefault("tuya_scale", {})
-    hass.data["tuya_scale"][entry.entry_id] = coordinator
-
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
-
-    return True
-
-class TuyaScaleCoordinator(DataUpdateCoordinator):
-    """My custom coordinator."""
-
-    def __init__(self, hass: HomeAssistant, api: TuyaOpenAPI) -> None:
-        """Initialize my coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            name="Tuya Scale",
-            update_interval=SCAN_INTERVAL,
-        )
-        self.api = api
-
-    async def _async_update_data(self):
-        """Fetch data from API endpoint."""
-        try:
-            await self.api.connect()
-            response = await self.api.get("/v1.0/devices/status", {"device_ids": "YOUR_DEVICE_ID"})
-            if not response or not response.get("success"):
-                raise UpdateFailed("Failed to fetch data from Tuya API")
-            return response.get("result", [])
-        except Exception as err:
-            raise UpdateFailed(f"Error communicating with Tuya API: {err}")
-
-class TuyaScaleSensor:
-    """Representation of a Tuya Scale sensor."""
-
-    def __init__(self, coordinator: TuyaScaleCoordinator, name: str, device_id: str) -> None:
+class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
+    """Representation of a Tuya Smart Scale sensor for a specific user."""
+    
+    def __init__(self, coordinator, device_id, user_id, nickname, entity_type):
         """Initialize the sensor."""
-        self.coordinator = coordinator
-        self._name = name
-        self._device_id = device_id
-        self._state = None
-
+        super().__init__(coordinator)
+        self.device_id = device_id
+        self.user_id = user_id
+        self.nickname = nickname
+        self.entity_type = entity_type
+        self._attr_unique_id = f"{device_id}_{user_id}_{entity_type}"
+        self._attr_name = f"Tuya Scale {nickname or user_id} {entity_type.replace('_', ' ').title()}"
+        
+        # Find the canonical sensor type for this entity
+        canonical_type = entity_type
+        for sensor_type, config in SENSOR_TYPES.items():
+            if entity_type == sensor_type or entity_type in config["aliases"]:
+                canonical_type = sensor_type
+                break
+        
+        # Configure sensor properties based on entity type
+        if canonical_type in SENSOR_TYPES:
+            config = SENSOR_TYPES[canonical_type]
+            self._attr_native_unit_of_measurement = config["unit"]
+            self._attr_device_class = config["device_class"]
+            self._attr_icon = config["icon"]
+    
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data:
+        user_data = self.coordinator.data.get(self.user_id)
+        if not user_data:
             return None
+        # Check if the entity_type is in the top-level user_data
+        value = user_data.get(self.entity_type)
+        # If not, check if it's in the analysis_report
+        if value is None and "analysis_report" in user_data:
+            value = user_data["analysis_report"].get(self.entity_type)
+        # Convert timestamp to datetime for timestamp sensors
+        if self.entity_type == "create_time" and value is not None:
+            try:
+                # Convert milliseconds since epoch to datetime
+                return datetime.datetime.fromtimestamp(int(value)/1000, datetime.timezone.utc)
+            except (ValueError, TypeError):
+                return None
+        return value
 
-        for device in self.coordinator.data:
-            if device.get("id") == self._device_id:
-                for status in device.get("status", []):
-                    if status.get("code") == "weight":
-                        return status.get("value")
-        return None
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
-        return "kg"
-
-    @property
-    def device_class(self) -> str:
-        """Return the device class."""
-        return "weight" 
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Tuya Smart Scale sensors for all users based on a config entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    entities = []
+    # coordinator.data is a dict: {user_id: {measurement data, 'nickname': ...}}
+    for user_id, user_data in coordinator.data.items():
+        nickname = user_data.get("nickname")
+        for sensor_type in ALL_SENSOR_TYPES:
+            entities.append(TuyaSmartScaleSensor(
+                coordinator,
+                entry.data["device_id"],
+                user_id,
+                nickname,
+                sensor_type
+            ))
+    async_add_entities(entities)

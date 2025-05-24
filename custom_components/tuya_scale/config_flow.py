@@ -1,52 +1,24 @@
-"""Config flow for Tuya Scale integration."""
-from __future__ import annotations
-
-import logging
-import voluptuous as vol
-
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+import voluptuous as vol
+from .const import DOMAIN, CONF_API_KEY, CONF_API_SECRET, CONF_REGION, REGIONS, DEFAULT_REGION, CONF_DEVICE_ID
 
-from .tuya_connector.tuya_connector.openapi import TuyaOpenAPI
-
-_LOGGER = logging.getLogger(__name__)
-
-DOMAIN = "tuya_scale"
-
-class TuyaScaleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Tuya Scale."""
-
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
         errors = {}
-
         if user_input is not None:
-            try:
-                api = TuyaOpenAPI(
-                    endpoint=user_input["endpoint"],
-                    access_id=user_input["access_id"],
-                    access_secret=user_input["access_secret"],
-                )
-                await api.connect()
-                return self.async_create_entry(
-                    title="Tuya Scale",
-                    data=user_input,
-                )
-            except Exception as err:
-                _LOGGER.error("Failed to connect to Tuya API: %s", err)
-                errors["base"] = "cannot_connect"
+            # Validate credentials here if needed
+            return self.async_create_entry(title="Tuya Smart Scale", data=user_input)
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("endpoint"): str,
-                    vol.Required("access_id"): str,
-                    vol.Required("access_secret"): str,
-                }
-            ),
-            errors=errors,
-        ) 
+        region_options = {code: data["name"] for code, data in REGIONS.items()}
+        data_schema = vol.Schema({
+            vol.Required(CONF_API_KEY): str,  # Access ID
+            vol.Required(CONF_API_SECRET): str,  # Access Key
+            vol.Required(CONF_REGION, default=DEFAULT_REGION): vol.In(region_options),
+            vol.Required(CONF_DEVICE_ID): str,  # Manual Device ID field, now using constant
+        })
+        return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
+
+    async def async_step_import(self, import_info):
+        return await self.async_step_user(import_info)
