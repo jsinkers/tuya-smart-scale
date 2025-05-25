@@ -106,7 +106,21 @@ class TuyaSmartScaleAPI:
             return self.access_token
         path = "/v1.0/token?grant_type=1"
         method = "GET"
-        headers = self.sign(method, path)
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
+        t = str(int(time.time() * 1000))
+        message = self.access_id + t + str_to_sign
+        signature = hmac.new(
+            self.access_key.encode('utf-8'),
+            msg=message.encode('utf-8'),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        headers = {
+            "client_id": self.access_id,
+            "t": t,
+            "sign_method": self.sign_method,
+            "sign": signature,
+        }
         url = f"{self.endpoint}{path}"
         _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
         response = requests.get(url, headers=headers)
@@ -147,9 +161,23 @@ class TuyaSmartScaleAPI:
             params["start_time"] = start_time
         path = f"/v1.0/scales/{self.device_id}/datas/history"
         
-        # Use the exact same logic as the working test_integration_api.py
-        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=params)
-        url = f"{self.endpoint}{canonical_path}"
+        # Use direct signature logic like get_access_token (which works)
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        full_path = f"{path}?{param_str}"
+        
+        method = "GET"
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        str_to_sign = f"{method}\n{body_sha256}\n\n{full_path}"
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode('utf-8'),
+            msg=message.encode('utf-8'),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        url = f"{self.endpoint}{full_path}"
         headers = {
             "client_id": self.access_id,
             "access_token": token,
@@ -217,13 +245,32 @@ class TuyaSmartScaleAPI:
                     _LOGGER.warning(f"No records found for user {user_id}")
                     continue
                 latest_record = records[0]
-                record_id = latest_record.get("id")
-                if record_id:
-                    try:
-                        analysis_report = self.get_analysis_report(record_id)
+                
+                # Try to get analysis report if we have the required data
+                try:
+                    height = float(latest_record.get("height", 0))
+                    weight = float(latest_record.get("wegith", 0))  # Note: API uses "wegith" not "weight"
+                    resistance = latest_record.get("body_r", "0")
+                    
+                    # Only get analysis if we have valid resistance data
+                    if height > 0 and weight > 0 and resistance and resistance != "0":
+                        # Use reasonable defaults for age and sex if not available
+                        age = 30  # Default age
+                        sex = 1   # Default to male
+                        
+                        analysis_report = self.get_analysis_report(
+                            height=height,
+                            weight=weight,
+                            age=age,
+                            sex=sex,
+                            resistance=resistance
+                        )
                         latest_record["analysis_report"] = analysis_report
-                    except Exception as e:
-                        _LOGGER.warning(f"Could not fetch analysis report for record {record_id}: {e}")
+                    else:
+                        _LOGGER.debug(f"Skipping analysis report for record - insufficient data: height={height}, weight={weight}, resistance={resistance}")
+                except Exception as e:
+                    _LOGGER.warning(f"Could not fetch analysis report for record: {e}")
+                
                 latest_record.update({"nickname": user.get("nickname")})
                 result[user_id] = latest_record
             return result
@@ -241,38 +288,69 @@ class TuyaSmartScaleAPI:
             _LOGGER.error("Failed to validate credentials: %s", err)
             return False
         
-    def get_analysis_report(self, record_id: str) -> dict:
-        """Get the analysis report for a given weighing record using the correct endpoint and signature logic."""
+    def get_analysis_report(self, height: float, weight: float, age: int, sex: int, resistance: str) -> Dict[str, Any]:
+        """Get body analysis report using POST request.
+        
+        Args:
+            height: Height in cm
+            weight: Weight in kg  
+            age: Age in years
+            sex: 1 = male, 2 = female
+            resistance: Body resistance as string
+        """
         token = self.get_access_token()
-        # Find the record data for this record_id
-        all_records = self.get_scale_records(limit=100)
-        record = next((r for r in all_records if r.get("id") == record_id), None)
-        if not record:
-            _LOGGER.error(f"No record found with id {record_id} for analysis report.")
-            return {}
-        # Prepare body for analysis report (see tuya_scale_downloader.py for mapping)
-        body = {
-            "height": record.get("height"),
-            "weight": record.get("wegith"),
-            "resistance": record.get("body_r"),
-            "age": record.get("body_age", 30),  # fallback if not present
-            "sex": record.get("sex", 1),  # fallback if not present
+        path = f"/v1.0/scales/{self.device_id}/analysis-reports"
+        method = "POST"
+        
+        # Body data as per Tuya API docs
+        body_data = {
+            "height": height,
+            "weight": weight,
+            "age": age,
+            "sex": sex,
+            "resistance": resistance  # Should be string according to docs
         }
-        # For POST requests, use the corrected signature logic with body
-        path = f"/v1.0/scales/{self.device_id}/analysis-reports/"
-        headers = self.sign("POST", path, body=body, access_token=token)
-        url = f"{self.endpoint}{path}"
-        response = requests.post(url, headers=headers, json=body)
-        _LOGGER.debug(f"Analysis report response: status={response.status_code}, text={response.text}")
+        
+        body_json = json.dumps(body_data, separators=(',', ':'))
+        body_bytes = body_json.encode('utf-8')
+        body_sha256 = hashlib.sha256(body_bytes).hexdigest()
+        
+        # For POST requests, canonical_path is just the path (no query params)
+        canonical_path = path
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+            "Content-Type": "application/json"
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        _LOGGER.debug(f"POST Analysis Reports:")
+        _LOGGER.debug(f"URL: {url}")
+        _LOGGER.debug(f"Body: {body_json}")
+        _LOGGER.debug(f"Body SHA256: {body_sha256}")
+        _LOGGER.debug(f"String to sign: {str_to_sign}")
+        _LOGGER.debug(f"Headers: {headers}")
+        
+        response = requests.post(url, headers=headers, data=body_json)
+        
+        _LOGGER.debug(f"Analysis response: status={response.status_code}, text={response.text}")
+        
         if response.status_code != 200:
             _LOGGER.error(f"Failed to get analysis report: {response.text}")
-            return {}
-        try:
-            data = response.json()
-        except Exception as e:
-            _LOGGER.error(f"Failed to parse JSON response for analysis report: {e}")
-            return {}
-        if not isinstance(data, dict) or "result" not in data:
-            _LOGGER.error(f"Unexpected response structure for analysis report (missing 'result'): {data}")
-            return {}
-        return data.get("result", {})
+            raise Exception(f"Failed to get analysis report: {response.text}")
+            
+        return response.json().get("result", {})
