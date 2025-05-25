@@ -162,25 +162,21 @@ class TuyaSmartScaleAPI:
         return data["result"]["records"]
 
     def get_scale_users(self) -> List[Dict[str, Any]]:
-        """Get users for this scale device."""
-        token = self.get_access_token()
-        params = {"device_id": self.device_id}
-        headers = self.sign("GET", "/v1.0/devices/scale/users", params=params)
-        headers["access_token"] = token
-        url = f"{self.endpoint}/v1.0/devices/scale/users?device_id={self.device_id}"
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            _LOGGER.error(f"Failed to get scale users: {response.text}")
-            return []
-        try:
-            data = response.json()
-        except Exception as e:
-            _LOGGER.error(f"Failed to parse JSON response for users: {e}")
-            return []
-        if not isinstance(data, dict) or "result" not in data:
-            _LOGGER.error(f"Unexpected response structure for users (missing 'result'): {data}")
-            return []
-        return data["result"]
+        """Get users for this scale device by extracting from measurement records."""
+        # Fetch a reasonable number of recent records (e.g., 100)
+        records = self.get_scale_records(limit=100)
+        users = {}
+        for rec in records:
+            user_id = rec.get("user_id")
+            nickname = rec.get("nickname")
+            if user_id and user_id not in users:
+                users[user_id] = {"user_id": user_id, "nickname": nickname}
+        user_list = list(users.values())
+        if not user_list:
+            _LOGGER.warning("No users found in recent measurement records.")
+        else:
+            _LOGGER.debug(f"Discovered users from records: {user_list}")
+        return user_list
         
     def get_latest_data(self) -> Dict[str, Dict[str, Any]]:
         """Get latest measurement data for all users of this scale, including analysis report."""
