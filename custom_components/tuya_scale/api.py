@@ -113,13 +113,14 @@ class TuyaSmartScaleAPI:
 
     def get_scale_records(self, start_time: int = None, end_time: int = None, 
                          limit: int = 10, user_id: str = None) -> List[Dict[str, Any]]:
-        """Get scale measurement records using the correct Tuya endpoint."""
+        """Get scale measurement records using the correct Tuya endpoint and signature logic."""
         token = self.get_access_token()
         params = {"page_size": limit, "page_no": 1}
         if start_time:
             params["start_time"] = start_time
         # The Tuya API for history does not support user_id or end_time as direct params, so we filter after fetch
-        headers = self.sign("GET", f"/v1.0/scales/{self.device_id}/datas/history", params=params)
+        # Only the path is used in the string to sign for GET requests, not the query params
+        headers = self.sign("GET", f"/v1.0/scales/{self.device_id}/datas/history")
         headers["access_token"] = token
         param_str = "&".join([f"{key}={value}" for key, value in params.items()])
         url = f"{self.endpoint}/v1.0/scales/{self.device_id}/datas/history?{param_str}"
