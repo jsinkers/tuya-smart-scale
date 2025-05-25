@@ -113,36 +113,16 @@ class TuyaSmartScaleAPI:
 
     def get_scale_records(self, start_time: int = None, end_time: int = None, 
                          limit: int = 10, user_id: str = None) -> List[Dict[str, Any]]:
-        """Get scale measurement records.
-        
-        Args:
-            start_time: Start time in milliseconds since epoch
-            end_time: End time in milliseconds since epoch
-            limit: Maximum number of records to return (default 10, max 100)
-            user_id: Optional user ID to filter records
-            
-        Returns:
-            List of scale records
-        """
+        """Get scale measurement records using the correct Tuya endpoint."""
         token = self.get_access_token()
-        
-        params = {"device_id": self.device_id, "limit": limit}
-        
+        params = {"page_size": limit, "page_no": 1}
         if start_time:
             params["start_time"] = start_time
-        
-        if end_time:
-            params["end_time"] = end_time
-            
-        if user_id:
-            params["user_id"] = user_id
-            
-        headers = self.sign("GET", "/v1.0/devices/scale/records", params=params)
+        # The Tuya API for history does not support user_id or end_time as direct params, so we filter after fetch
+        headers = self.sign("GET", f"/v1.0/scales/{self.device_id}/datas/history", params=params)
         headers["access_token"] = token
-        
         param_str = "&".join([f"{key}={value}" for key, value in params.items()])
-        url = f"{self.endpoint}/v1.0/devices/scale/records?{param_str}"
-        
+        url = f"{self.endpoint}/v1.0/scales/{self.device_id}/datas/history?{param_str}"
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
             _LOGGER.error(f"Failed to get scale records: {response.text}")
@@ -159,7 +139,11 @@ class TuyaSmartScaleAPI:
         if "records" not in data["result"] or not isinstance(data["result"]["records"], list):
             _LOGGER.error(f"Unexpected response structure (missing 'records'): {data}")
             return []
-        return data["result"]["records"]
+        records = data["result"]["records"]
+        # If user_id is specified, filter records after fetch
+        if user_id:
+            records = [rec for rec in records if rec.get("user_id") == user_id]
+        return records
 
     def get_scale_users(self) -> List[Dict[str, Any]]:
         """Get users for this scale device by extracting from measurement records."""
@@ -224,12 +208,26 @@ class TuyaSmartScaleAPI:
             return False
         
     def get_analysis_report(self, record_id: str) -> dict:
-        """Get the analysis report for a given weighing record."""
+        """Get the analysis report for a given weighing record using the correct endpoint."""
         token = self.get_access_token()
-        headers = self.sign("GET", f"/v1.0/devices/scale/records/{record_id}/analysis_report")
+        # Find the record data for this record_id
+        all_records = self.get_scale_records(limit=100)
+        record = next((r for r in all_records if r.get("id") == record_id), None)
+        if not record:
+            _LOGGER.error(f"No record found with id {record_id} for analysis report.")
+            return {}
+        # Prepare body for analysis report (see tuya_scale_downloader.py for mapping)
+        body = {
+            "height": record.get("height"),
+            "weight": record.get("wegith"),
+            "resistance": record.get("body_r"),
+            "age": record.get("body_age", 30),  # fallback if not present
+            "sex": record.get("sex", 1),  # fallback if not present
+        }
+        headers = self.sign("POST", f"/v1.0/scales/{self.device_id}/analysis-reports/", body=body)
         headers["access_token"] = token
-        url = f"{self.endpoint}/v1.0/devices/scale/records/{record_id}/analysis_report"
-        response = requests.get(url, headers=headers)
+        url = f"{self.endpoint}/v1.0/scales/{self.device_id}/analysis-reports/"
+        response = requests.post(url, headers=headers, json=body)
         if response.status_code != 200:
             _LOGGER.error(f"Failed to get analysis report: {response.text}")
             return {}
