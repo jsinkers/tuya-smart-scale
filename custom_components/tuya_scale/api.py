@@ -36,11 +36,8 @@ class TuyaSmartScaleAPI:
             body_str = ''
         body_sha256 = hashlib.sha256(body_str.encode('utf-8')).hexdigest()
         str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
-        # Message
-        message = self.api_key
-        if access_token:
-            message += access_token
-        message += t + str_to_sign
+        # Message: for openapi endpoints, do NOT include access_token in the message
+        message = self.api_key + t + str_to_sign
         signature = hmac.new(
             self.api_secret.encode('utf-8'),
             msg=message.encode('utf-8'),
@@ -54,7 +51,7 @@ class TuyaSmartScaleAPI:
         }
         if access_token:
             headers["access_token"] = access_token
-        _LOGGER.debug(f"Tuya v2 sign() for {method} {path}: t={t} ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(t)//1000))} UTC) str_to_sign={str_to_sign} message={message}")
+        _LOGGER.debug(f"Tuya v2 sign() for {method} {path}: t={t} str_to_sign={str_to_sign} message={message}")
         return headers
 
     def get_access_token(self) -> str:
@@ -209,7 +206,7 @@ class TuyaSmartScaleAPI:
             return False
         
     def get_analysis_report(self, record_id: str) -> dict:
-        """Get the analysis report for a given weighing record using the correct endpoint."""
+        """Get the analysis report for a given weighing record using the correct endpoint and signature logic."""
         token = self.get_access_token()
         # Find the record data for this record_id
         all_records = self.get_scale_records(limit=100)
@@ -225,6 +222,7 @@ class TuyaSmartScaleAPI:
             "age": record.get("body_age", 30),  # fallback if not present
             "sex": record.get("sex", 1),  # fallback if not present
         }
+        # Only the path and body are used in the string to sign for POST requests, not the query params
         headers = self.sign("POST", f"/v1.0/scales/{self.device_id}/analysis-reports/", body=body)
         headers["access_token"] = token
         url = f"{self.endpoint}/v1.0/scales/{self.device_id}/analysis-reports/"
