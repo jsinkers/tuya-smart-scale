@@ -14,10 +14,10 @@ _LOGGER = logging.getLogger(__name__)
 class TuyaSmartScaleAPI:
     """API client for Tuya Smart Scale."""
 
-    def __init__(self, api_key: str, api_secret: str, device_id: str, region: str = "us"):
+    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us"):
         """Initialize the API client."""
-        self.api_key = api_key
-        self.api_secret = api_secret
+        self.access_id = access_id
+        self.access_key = access_key
         self.device_id = device_id
         self.region = region
         self.endpoint = REGIONS.get(region, REGIONS["eu"])["endpoint"]
@@ -37,14 +37,14 @@ class TuyaSmartScaleAPI:
         body_sha256 = hashlib.sha256(body_str.encode('utf-8')).hexdigest()
         str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
         # Message: for openapi endpoints, do NOT include access_token in the message
-        message = self.api_key + t + str_to_sign
+        message = self.access_id + t + str_to_sign
         signature = hmac.new(
-            self.api_secret.encode('utf-8'),
+            self.access_key.encode('utf-8'),
             msg=message.encode('utf-8'),
             digestmod=hashlib.sha256
         ).hexdigest().upper()
         headers = {
-            "client_id": self.api_key,
+            "client_id": self.access_id,
             "t": t,
             "sign_method": self.sign_method,
             "sign": signature,
@@ -63,14 +63,14 @@ class TuyaSmartScaleAPI:
         body_sha256 = hashlib.sha256(b'').hexdigest()
         str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
         t = str(int(time.time() * 1000))
-        message = self.api_key + t + str_to_sign
+        message = self.access_id + t + str_to_sign
         sign = hmac.new(
-            self.api_secret.encode("utf-8"),
+            self.access_key.encode("utf-8"),
             msg=message.encode("utf-8"),
             digestmod=hashlib.sha256
         ).hexdigest().upper()
         headers = {
-            "client_id": self.api_key,
+            "client_id": self.access_id,
             "t": t,
             "sign": sign,
             "sign_method": self.sign_method,
