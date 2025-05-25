@@ -102,8 +102,7 @@ class TuyaSmartScaleAPI:
             params["start_time"] = start_time
         path = f"/v1.0/scales/{self.device_id}/datas/history"
         t = str(int(time.time() * 1000))
-        headers = self.sign("GET", path, t=t)
-        headers["access_token"] = token
+        headers = self.sign("GET", path, access_token=token, t=t)
         param_str = "&".join([f"{key}={value}" for key, value in params.items()])
         url = f"{self.endpoint}{path}?{param_str}"
         _LOGGER.debug(f"Requesting scale records: url={url}\nheaders={headers}")
@@ -207,10 +206,10 @@ class TuyaSmartScaleAPI:
             "sex": record.get("sex", 1),  # fallback if not present
         }
         # Only the path and body are used in the string to sign for POST requests, not the query params
-        headers = self.sign("POST", f"/v1.0/scales/{self.device_id}/analysis-reports/", body=body)
-        headers["access_token"] = token
+        headers = self.sign("POST", f"/v1.0/scales/{self.device_id}/analysis-reports/", body=body, access_token=token)
         url = f"{self.endpoint}/v1.0/scales/{self.device_id}/analysis-reports/"
         response = requests.post(url, headers=headers, json=body)
+        _LOGGER.debug(f"Analysis report response: status={response.status_code}, text={response.text}")
         if response.status_code != 200:
             _LOGGER.error(f"Failed to get analysis report: {response.text}")
             return {}
