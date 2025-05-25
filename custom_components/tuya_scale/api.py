@@ -102,13 +102,15 @@ class TuyaSmartScaleAPI:
         params = {"page_size": limit, "page_no": 1}
         if start_time:
             params["start_time"] = start_time
-        # The Tuya API for history does not support user_id or end_time as direct params, so we filter after fetch
         # Only the path is used in the string to sign for GET requests, not the query params
-        headers = self.sign("GET", f"/v1.0/scales/{self.device_id}/datas/history")
+        path = f"/v1.0/scales/{self.device_id}/datas/history"
+        headers = self.sign("GET", path)
         headers["access_token"] = token
         param_str = "&".join([f"{key}={value}" for key, value in params.items()])
-        url = f"{self.endpoint}/v1.0/scales/{self.device_id}/datas/history?{param_str}"
+        url = f"{self.endpoint}{path}?{param_str}"
+        _LOGGER.debug(f"Requesting scale records: url={url}\nheaders={headers}")
         response = requests.get(url, headers=headers)
+        _LOGGER.debug(f"Scale records response: status={response.status_code}, text={response.text}")
         if response.status_code != 200:
             _LOGGER.error(f"Failed to get scale records: {response.text}")
             return []
