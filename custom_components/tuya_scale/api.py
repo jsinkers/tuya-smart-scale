@@ -35,8 +35,12 @@ class TuyaSmartScaleAPI:
         else:
             body_str = ''
         body_sha256 = hashlib.sha256(body_str.encode('utf-8')).hexdigest()
+        # For the string-to-sign, use only the path (no query parameters for GET requests)
         str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
-        message = self.access_id + t + str_to_sign
+        if access_token:
+            message = self.access_id + access_token + t + str_to_sign
+        else:
+            message = self.access_id + t + str_to_sign
         signature = hmac.new(
             self.access_key.encode('utf-8'),
             msg=message.encode('utf-8'),
@@ -62,9 +66,22 @@ class TuyaSmartScaleAPI:
         return path
 
     def _sign_request(self, method, path, access_token=None, params=None):
-        """Sign the request using the correct Tuya v2.0 signature logic."""
+        """Sign the request using the correct Tuya v2.0 signature logic.
+        
+        This matches the working tuya_api_debug_test.py pattern exactly:
+        - canonical_path includes sorted query parameters
+        - string-to-sign uses the canonical_path with parameters
+        """
         body_sha256 = hashlib.sha256(b'').hexdigest()
-        canonical_path = self._build_canonical_path(path, params)
+        # Always sort params by key for both canonical_path and URL (like debug script)
+        if params:
+            sorted_params = sorted(params.items())
+            param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+            canonical_path = f"{path}?{param_str}"
+        else:
+            canonical_path = path
+            
+        # Use canonical_path (with params) in string-to-sign - this is the key!
         str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
         t = str(int(time.time() * 1000))
         if access_token:
@@ -76,6 +93,7 @@ class TuyaSmartScaleAPI:
             msg=message.encode("utf-8"),
             digestmod=hashlib.sha256
         ).hexdigest().upper()
+        
         return sign, t, canonical_path
 
     def _request(self, method, path, access_token=None, params=None):
@@ -91,7 +109,8 @@ class TuyaSmartScaleAPI:
         if access_token:
             headers["access_token"] = access_token
         _LOGGER.debug(f"Requesting {method} {url} with headers {headers}")
-        response = requests.request(method, url, headers=headers, params=params)
+        # Don't pass params again since they're already in the URL via canonical_path
+        response = requests.request(method, url, headers=headers)
         _LOGGER.debug(f"Response: status={response.status_code}, text={response.text}")
         if response.status_code != 200:
             _LOGGER.error(f"API request failed: {response.text}")
@@ -152,7 +171,7 @@ class TuyaSmartScaleAPI:
         if start_time:
             params["start_time"] = start_time
         path = f"/v1.0/scales/{self.device_id}/datas/history"
-        # Use the corrected signature logic that works in the test script
+        # Use the corrected signature logic that matches the working test script
         sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=params)
         url = f"{self.endpoint}{canonical_path}"
         headers = {
@@ -262,9 +281,10 @@ class TuyaSmartScaleAPI:
             "age": record.get("body_age", 30),  # fallback if not present
             "sex": record.get("sex", 1),  # fallback if not present
         }
-        # Only the path and body are used in the string to sign for POST requests, not the query params
-        headers = self.sign("POST", f"/v1.0/scales/{self.device_id}/analysis-reports/", body=body, access_token=token)
-        url = f"{self.endpoint}/v1.0/scales/{self.device_id}/analysis-reports/"
+        # For POST requests, use the corrected signature logic with body
+        path = f"/v1.0/scales/{self.device_id}/analysis-reports/"
+        headers = self.sign("POST", path, body=body, access_token=token)
+        url = f"{self.endpoint}{path}"
         response = requests.post(url, headers=headers, json=body)
         _LOGGER.debug(f"Analysis report response: status={response.status_code}, text={response.text}")
         if response.status_code != 200:
