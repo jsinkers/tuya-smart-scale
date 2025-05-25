@@ -53,6 +53,51 @@ class TuyaSmartScaleAPI:
         _LOGGER.debug(f"Tuya v2 sign() for {method} {path}: t={t} str_to_sign={str_to_sign} message={message} signature={signature}")
         return headers
 
+    def _build_canonical_path(self, path, params=None):
+        """Build the canonical path for the request, sorting query parameters."""
+        if params:
+            sorted_params = sorted(params.items())
+            param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+            return f"{path}?{param_str}"
+        return path
+
+    def _sign_request(self, method, path, access_token=None, params=None):
+        """Sign the request using the correct Tuya v2.0 signature logic."""
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        canonical_path = self._build_canonical_path(path, params)
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        t = str(int(time.time() * 1000))
+        if access_token:
+            message = self.access_id + access_token + t + str_to_sign
+        else:
+            message = self.access_id + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        return sign, t, canonical_path
+
+    def _request(self, method, path, access_token=None, params=None):
+        """Generic request handler for making API requests."""
+        sign, t, canonical_path = self._sign_request(method, path, access_token, params)
+        url = f"{self.endpoint}{canonical_path}"
+        headers = {
+            "client_id": self.access_id,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        if access_token:
+            headers["access_token"] = access_token
+        _LOGGER.debug(f"Requesting {method} {url} with headers {headers}")
+        response = requests.request(method, url, headers=headers, params=params)
+        _LOGGER.debug(f"Response: status={response.status_code}, text={response.text}")
+        if response.status_code != 200:
+            _LOGGER.error(f"API request failed: {response.text}")
+            response.raise_for_status()
+        return response.json()
+
     def get_access_token(self) -> str:
         """Get access token from Tuya API using v2.0 signature logic."""
         if self.access_token and time.time() < self.token_expires - 60:
