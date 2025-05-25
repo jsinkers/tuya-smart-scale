@@ -67,6 +67,37 @@ class TuyaSmartScaleAPI:
         _LOGGER.debug(f"Tuya v2 sign() for {method} {canonical_path}: t={t} str_to_sign={str_to_sign} message={message} signature={signature}")
         return headers
 
+    def _sign_request(self, method, path, access_token=None, params=None):
+        """Sign the request using the correct Tuya v2.0 signature logic.
+        
+        This matches the working tuya_api_debug_test.py pattern exactly:
+        - canonical_path includes sorted query parameters
+        - string-to-sign uses the canonical_path with parameters
+        """
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        # Always sort params by key for both canonical_path and URL (like debug script)
+        if params:
+            sorted_params = sorted(params.items())
+            param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+            canonical_path = f"{path}?{param_str}"
+        else:
+            canonical_path = path
+            
+        # Use canonical_path (with params) in string-to-sign - this is the key!
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        t = str(int(time.time() * 1000))
+        if access_token:
+            message = self.access_id + access_token + t + str_to_sign
+        else:
+            message = self.access_id + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        return sign, t, canonical_path
+
 
 
     def get_access_token(self) -> str:
@@ -115,12 +146,17 @@ class TuyaSmartScaleAPI:
         if start_time:
             params["start_time"] = start_time
         path = f"/v1.0/scales/{self.device_id}/datas/history"
-        headers = self.sign("GET", path, params=params, access_token=token)
         
-        # Build URL with sorted parameters (matching canonical path logic)
-        sorted_params = sorted(params.items())
-        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
-        url = f"{self.endpoint}{path}?{param_str}"
+        # Use the exact same logic as the working test_integration_api.py
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=params)
+        url = f"{self.endpoint}{canonical_path}"
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
         
         _LOGGER.debug(f"Requesting scale records: url={url}\nheaders={headers}")
         response = requests.get(url, headers=headers)
