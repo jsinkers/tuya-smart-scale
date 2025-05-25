@@ -25,18 +25,17 @@ class TuyaSmartScaleAPI:
         self.token_expires = 0
         self.sign_method = "HMAC-SHA256"
 
-    def sign(self, method: str, path: str, params: Dict = None, body: Dict = None, access_token: str = None) -> Dict[str, str]:
-        """Calculate signature for Tuya v2.0 API requests."""
+    def sign(self, method: str, path: str, params: Dict = None, body: Dict = None, access_token: str = None, t: str = None) -> Dict[str, str]:
+        """Calculate signature for Tuya v2.0 API requests. Allows passing t for debug consistency."""
         method = method.upper()
-        t = str(int(time.time() * 1000))
-        # Canonical string to sign
+        if t is None:
+            t = str(int(time.time() * 1000))
         if body:
             body_str = json.dumps(body, separators=(",", ":"))
         else:
             body_str = ''
         body_sha256 = hashlib.sha256(body_str.encode('utf-8')).hexdigest()
         str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
-        # Message: for openapi endpoints, do NOT include access_token in the message
         message = self.access_id + t + str_to_sign
         signature = hmac.new(
             self.access_key.encode('utf-8'),
@@ -51,7 +50,7 @@ class TuyaSmartScaleAPI:
         }
         if access_token:
             headers["access_token"] = access_token
-        _LOGGER.debug(f"Tuya v2 sign() for {method} {path}: t={t} str_to_sign={str_to_sign} message={message}")
+        _LOGGER.debug(f"Tuya v2 sign() for {method} {path}: t={t} str_to_sign={str_to_sign} message={message} signature={signature}")
         return headers
 
     def get_access_token(self) -> str:
@@ -60,7 +59,6 @@ class TuyaSmartScaleAPI:
             return self.access_token
         path = "/v1.0/token?grant_type=1"
         method = "GET"
-        # Use the sign() method, which handles the canonical string and signature logic
         headers = self.sign(method, path)
         url = f"{self.endpoint}{path}"
         _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
@@ -102,9 +100,9 @@ class TuyaSmartScaleAPI:
         params = {"page_size": limit, "page_no": 1}
         if start_time:
             params["start_time"] = start_time
-        # Only the path is used in the string to sign for GET requests, not the query params
         path = f"/v1.0/scales/{self.device_id}/datas/history"
-        headers = self.sign("GET", path)
+        t = str(int(time.time() * 1000))
+        headers = self.sign("GET", path, t=t)
         headers["access_token"] = token
         param_str = "&".join([f"{key}={value}" for key, value in params.items()])
         url = f"{self.endpoint}{path}?{param_str}"
@@ -119,7 +117,6 @@ class TuyaSmartScaleAPI:
         except Exception as e:
             _LOGGER.error(f"Failed to parse JSON response: {e}")
             return []
-        # Defensive: check for 'result' and 'records' keys
         if not isinstance(data, dict) or "result" not in data or not isinstance(data["result"], dict):
             _LOGGER.error(f"Unexpected response structure (missing 'result'): {data}")
             return []
@@ -127,14 +124,12 @@ class TuyaSmartScaleAPI:
             _LOGGER.error(f"Unexpected response structure (missing 'records'): {data}")
             return []
         records = data["result"]["records"]
-        # If user_id is specified, filter records after fetch
         if user_id:
             records = [rec for rec in records if rec.get("user_id") == user_id]
         return records
 
     def get_scale_users(self) -> List[Dict[str, Any]]:
         """Get users for this scale device by extracting from measurement records."""
-        # Fetch a reasonable number of recent records (e.g., 100)
         records = self.get_scale_records(limit=100)
         users = {}
         for rec in records:
