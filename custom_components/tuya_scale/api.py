@@ -60,21 +60,8 @@ class TuyaSmartScaleAPI:
             return self.access_token
         path = "/v1.0/token?grant_type=1"
         method = "GET"
-        body_sha256 = hashlib.sha256(b'').hexdigest()
-        str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
-        t = str(int(time.time() * 1000))
-        message = self.access_id + t + str_to_sign
-        sign = hmac.new(
-            self.access_key.encode("utf-8"),
-            msg=message.encode("utf-8"),
-            digestmod=hashlib.sha256
-        ).hexdigest().upper()
-        headers = {
-            "client_id": self.access_id,
-            "t": t,
-            "sign": sign,
-            "sign_method": self.sign_method,
-        }
+        # Use the sign() method, which handles the canonical string and signature logic
+        headers = self.sign(method, path)
         url = f"{self.endpoint}{path}"
         _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
         response = requests.get(url, headers=headers)
