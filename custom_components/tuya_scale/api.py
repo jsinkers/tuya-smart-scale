@@ -126,11 +126,17 @@ class TuyaSmartScaleAPI:
     def get_device_info(self) -> Dict[str, Any]:
         """Get device information."""
         token = self.get_access_token()
-        
-        headers = self.sign("GET", f"/v1.0/devices/{self.device_id}")
-        headers["access_token"] = token
-        
-        url = f"{self.endpoint}/v1.0/devices/{self.device_id}"
+        path = f"/v1.0/devices/{self.device_id}"
+        # Use the corrected signature logic
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=None)
+        url = f"{self.endpoint}{canonical_path}"
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
         response = requests.get(url, headers=headers)
         
         if response.status_code != 200:
@@ -146,10 +152,16 @@ class TuyaSmartScaleAPI:
         if start_time:
             params["start_time"] = start_time
         path = f"/v1.0/scales/{self.device_id}/datas/history"
-        t = str(int(time.time() * 1000))
-        headers = self.sign("GET", path, access_token=token, t=t)
-        param_str = "&".join([f"{key}={value}" for key, value in params.items()])
-        url = f"{self.endpoint}{path}?{param_str}"
+        # Use the corrected signature logic that works in the test script
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=params)
+        url = f"{self.endpoint}{canonical_path}"
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
         _LOGGER.debug(f"Requesting scale records: url={url}\nheaders={headers}")
         response = requests.get(url, headers=headers)
         _LOGGER.debug(f"Scale records response: status={response.status_code}, text={response.text}")
