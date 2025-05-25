@@ -58,15 +58,27 @@ class TuyaSmartScaleAPI:
         return headers
 
     def get_access_token(self) -> str:
-        """Get access token from Tuya API."""
+        """Get access token from Tuya API using v2.0 signature logic."""
         if self.access_token and time.time() < self.token_expires - 60:
             return self.access_token
-        # For /v1.0/token, Tuya does NOT require a signature, only client_id and sign_method
+        path = "/v1.0/token?grant_type=1"
+        method = "GET"
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
+        t = str(int(time.time() * 1000))
+        message = self.api_key + t + str_to_sign
+        sign = hmac.new(
+            self.api_secret.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
         headers = {
             "client_id": self.api_key,
+            "t": t,
+            "sign": sign,
             "sign_method": self.sign_method,
         }
-        url = f"{self.endpoint}/v1.0/token?grant_type=1"
+        url = f"{self.endpoint}{path}"
         _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
