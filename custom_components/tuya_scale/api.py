@@ -25,52 +25,10 @@ class TuyaSmartScaleAPI:
         self.token_expires = 0
         self.sign_method = "HMAC-SHA256"
 
-    def sign(self, method: str, path: str, params: Dict = None, body: Dict = None, access_token: str = None, t: str = None) -> Dict[str, str]:
-        """Calculate signature for Tuya v2.0 API requests. Matches working test script exactly."""
-        method = method.upper()
-        if t is None:
-            t = str(int(time.time() * 1000))
-        if body:
-            body_str = json.dumps(body, separators=(",", ":"))
-        else:
-            body_str = ''
-        body_sha256 = hashlib.sha256(body_str.encode('utf-8')).hexdigest()
-        
-        # Match the working test script logic exactly:
-        # For paths that already contain query parameters (like "/v1.0/token?grant_type=1"), use as-is
-        # For paths with separate params dict, build canonical path with sorted parameters
-        if params:
-            sorted_params = sorted(params.items())
-            param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
-            canonical_path = f"{path}?{param_str}"
-        else:
-            canonical_path = path
-            
-        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
-        if access_token:
-            message = self.access_id + access_token + t + str_to_sign
-        else:
-            message = self.access_id + t + str_to_sign
-        signature = hmac.new(
-            self.access_key.encode('utf-8'),
-            msg=message.encode('utf-8'),
-            digestmod=hashlib.sha256
-        ).hexdigest().upper()
-        headers = {
-            "client_id": self.access_id,
-            "t": t,
-            "sign_method": self.sign_method,
-            "sign": signature,
-        }
-        if access_token:
-            headers["access_token"] = access_token
-        _LOGGER.debug(f"Tuya v2 sign() for {method} {canonical_path}: t={t} str_to_sign={str_to_sign} message={message} signature={signature}")
-        return headers
-
     def _sign_request(self, method, path, access_token=None, params=None):
         """Sign the request using the correct Tuya v2.0 signature logic.
         
-        This matches the working tuya_api_debug_test.py pattern exactly:
+        This matches the working test_integration_api.py pattern exactly:
         - canonical_path includes sorted query parameters
         - string-to-sign uses the canonical_path with parameters
         """
@@ -97,8 +55,6 @@ class TuyaSmartScaleAPI:
         ).hexdigest().upper()
         
         return sign, t, canonical_path
-
-
 
     def get_access_token(self) -> str:
         """Get access token from Tuya API using v2.0 signature logic."""
@@ -143,8 +99,16 @@ class TuyaSmartScaleAPI:
         """Get device information."""
         token = self.get_access_token()
         path = f"/v1.0/devices/{self.device_id}"
-        headers = self.sign("GET", path, access_token=token)
-        url = f"{self.endpoint}{path}"
+        # Use the corrected signature logic
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=None)
+        url = f"{self.endpoint}{canonical_path}"
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
         response = requests.get(url, headers=headers)
         
         if response.status_code != 200:
@@ -214,8 +178,10 @@ class TuyaSmartScaleAPI:
         users = {}
         for rec in records:
             user_id = rec.get("user_id")
-            nickname = rec.get("nickname")
-            if user_id and user_id not in users:
+            # Use nick_name from the records, not nickname
+            nickname = rec.get("nick_name") or rec.get("nickname")
+            # Filter out invalid user IDs: empty strings, "0", None, etc.
+            if user_id and user_id != "0" and len(user_id.strip()) > 0 and user_id not in users:
                 users[user_id] = {"user_id": user_id, "nickname": nickname}
         user_list = list(users.values())
         if not user_list:
