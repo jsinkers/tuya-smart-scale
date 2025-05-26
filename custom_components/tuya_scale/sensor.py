@@ -3,7 +3,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import datetime
 
-from .const import DOMAIN, SENSOR_TYPES, ALL_SENSOR_TYPES, CONF_DEVICE_ID
+from .const import DOMAIN, SENSOR_TYPES, CONF_DEVICE_ID
 
 class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Tuya Smart Scale sensor for a specific user."""
@@ -38,11 +38,30 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
         user_data = self.coordinator.data.get(self.user_id)
         if not user_data:
             return None
-        # Check if the entity_type is in the top-level user_data
+        
+        # Get the sensor config for this entity type
+        config = SENSOR_TYPES.get(self.entity_type, {})
+        
+        # Check for value under the canonical name first
         value = user_data.get(self.entity_type)
-        # If not, check if it's in the analysis_report
+        
+        # If not found, check aliases
+        if value is None:
+            for alias in config.get("aliases", []):
+                value = user_data.get(alias)
+                if value is not None:
+                    break
+        
+        # If still not found, check in analysis_report
         if value is None and "analysis_report" in user_data:
             value = user_data["analysis_report"].get(self.entity_type)
+            # Also check aliases in analysis_report
+            if value is None:
+                for alias in config.get("aliases", []):
+                    value = user_data["analysis_report"].get(alias)
+                    if value is not None:
+                        break
+        
         # Convert timestamp to datetime for timestamp sensors
         if self.entity_type == "create_time" and value is not None:
             try:
@@ -59,7 +78,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # coordinator.data is a dict: {user_id: {measurement data, 'nickname': ...}}
     for user_id, user_data in coordinator.data.items():
         nickname = user_data.get("nickname")
-        for sensor_type in ALL_SENSOR_TYPES:
+        # Only create sensors for the canonical sensor types, not aliases
+        for sensor_type in SENSOR_TYPES.keys():
             entities.append(TuyaSmartScaleSensor(
                 coordinator,
                 entry.data[CONF_DEVICE_ID],
