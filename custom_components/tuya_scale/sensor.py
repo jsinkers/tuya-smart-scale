@@ -3,7 +3,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import datetime
 
-from .const import DOMAIN, SENSOR_TYPES, ALL_SENSOR_TYPES
+from .const import DOMAIN, SENSOR_TYPES, ALL_SENSOR_TYPES, CONF_DEVICE_ID
 
 class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Tuya Smart Scale sensor for a specific user."""
@@ -62,7 +62,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for sensor_type in ALL_SENSOR_TYPES:
             entities.append(TuyaSmartScaleSensor(
                 coordinator,
-                entry.data["device_id"],
+                entry.data[CONF_DEVICE_ID],
                 user_id,
                 nickname,
                 sensor_type
