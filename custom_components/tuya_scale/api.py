@@ -25,14 +25,17 @@ class TuyaSmartScaleAPI:
         self.token_expires = 0
         self.sign_method = "HMAC-SHA256"
 
-    def _sign_request(self, method, path, access_token=None, params=None):
+    def _sign_request(self, method, path, access_token=None, params=None, body=None):
         """Sign the request using the correct Tuya v2.0 signature logic.
         
         This matches the working test_integration_api.py pattern exactly:
         - canonical_path includes sorted query parameters
         - string-to-sign uses the canonical_path with parameters
         """
-        body_sha256 = hashlib.sha256(b'').hexdigest()
+        if body:
+            body_sha256 = hashlib.sha256(body.encode('utf-8')).hexdigest()
+        else:
+            body_sha256 = hashlib.sha256(b'').hexdigest()
         # Always sort params by key for both canonical_path and URL (like debug script)
         if params:
             sorted_params = sorted(params.items())
@@ -61,21 +64,15 @@ class TuyaSmartScaleAPI:
         if self.access_token and time.time() < self.token_expires - 60:
             return self.access_token
         path = "/v1.0/token?grant_type=1"
-        method = "GET"
-        body_sha256 = hashlib.sha256(b'').hexdigest()
-        str_to_sign = f"{method}\n{body_sha256}\n\n{path}"
-        t = str(int(time.time() * 1000))
-        message = self.access_id + t + str_to_sign
-        signature = hmac.new(
-            self.access_key.encode('utf-8'),
-            msg=message.encode('utf-8'),
-            digestmod=hashlib.sha256
-        ).hexdigest().upper()
+        
+        # Use the unified _sign_request method
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=None, params=None)
+        url = f"{self.endpoint}{canonical_path}"
         headers = {
             "client_id": self.access_id,
             "t": t,
             "sign_method": self.sign_method,
-            "sign": signature,
+            "sign": sign,
         }
         url = f"{self.endpoint}{path}"
         _LOGGER.debug(f"Requesting token: url={url} headers={headers}")
@@ -125,23 +122,9 @@ class TuyaSmartScaleAPI:
             params["start_time"] = start_time
         path = f"/v1.0/scales/{self.device_id}/datas/history"
         
-        # Use direct signature logic like get_access_token (which works)
-        sorted_params = sorted(params.items())
-        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
-        full_path = f"{path}?{param_str}"
-        
-        method = "GET"
-        body_sha256 = hashlib.sha256(b'').hexdigest()
-        str_to_sign = f"{method}\n{body_sha256}\n\n{full_path}"
-        t = str(int(time.time() * 1000))
-        message = self.access_id + token + t + str_to_sign
-        sign = hmac.new(
-            self.access_key.encode('utf-8'),
-            msg=message.encode('utf-8'),
-            digestmod=hashlib.sha256
-        ).hexdigest().upper()
-        
-        url = f"{self.endpoint}{full_path}"
+        # Use the unified _sign_request method like other endpoints
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=params)
+        url = f"{self.endpoint}{canonical_path}"
         headers = {
             "client_id": self.access_id,
             "access_token": token,
@@ -203,20 +186,30 @@ class TuyaSmartScaleAPI:
                 if not user_id:
                     continue
                 try:
-                    records = self.get_scale_records(user_id=user_id, limit=1)
+                    # Get more records to find one with valid resistance data
+                    records = self.get_scale_records(user_id=user_id, limit=10)
                 except Exception as e:
                     _LOGGER.error(f"Error fetching records for user {user_id}: {e}")
                     continue
                 if not records:
                     _LOGGER.warning(f"No records found for user {user_id}")
                     continue
+                
+                # Use the most recent record, but try to find one with resistance data for analysis
                 latest_record = records[0]
+                record_with_resistance = None
+                for record in records:
+                    if record.get("body_r") and record.get("body_r") != "0":
+                        record_with_resistance = record
+                        break
                 
                 # Try to get analysis report if we have the required data
                 try:
-                    height = float(latest_record.get("height", 0))
-                    weight = float(latest_record.get("wegith", 0))  # Note: API uses "wegith" not "weight"
-                    resistance = latest_record.get("body_r", "0")
+                    # Use the record with resistance data for analysis if available
+                    analysis_record = record_with_resistance or latest_record
+                    height = float(analysis_record.get("height", 0))
+                    weight = float(analysis_record.get("wegith", 0))  # Note: API uses "wegith" not "weight"
+                    resistance = analysis_record.get("body_r", "0")
                     
                     # Only get analysis if we have valid resistance data
                     if height > 0 and weight > 0 and resistance and resistance != "0":
@@ -232,6 +225,7 @@ class TuyaSmartScaleAPI:
                             resistance=resistance
                         )
                         latest_record["analysis_report"] = analysis_report
+                        _LOGGER.debug(f"Added analysis report for user {user_id} using record with resistance {resistance}")
                     else:
                         _LOGGER.debug(f"Skipping analysis report for record - insufficient data: height={height}, weight={weight}, resistance={resistance}")
                 except Exception as e:
@@ -266,7 +260,6 @@ class TuyaSmartScaleAPI:
         """
         token = self.get_access_token()
         path = f"/v1.0/scales/{self.device_id}/analysis-reports"
-        method = "POST"
         
         # Body data as per Tuya API docs
         body_data = {
@@ -278,21 +271,10 @@ class TuyaSmartScaleAPI:
         }
         
         body_json = json.dumps(body_data, separators=(',', ':'))
-        body_bytes = body_json.encode('utf-8')
-        body_sha256 = hashlib.sha256(body_bytes).hexdigest()
         
-        # For POST requests, canonical_path is just the path (no query params)
-        canonical_path = path
-        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
-        
-        t = str(int(time.time() * 1000))
-        message = self.access_id + token + t + str_to_sign
-        sign = hmac.new(
-            self.access_key.encode("utf-8"),
-            msg=message.encode("utf-8"),
-            digestmod=hashlib.sha256
-        ).hexdigest().upper()
-        
+        # Use the unified _sign_request method for POST requests
+        sign, t, canonical_path = self._sign_request("POST", path, access_token=token, params=None, body=body_json)
+        url = f"{self.endpoint}{canonical_path}"
         headers = {
             "client_id": self.access_id,
             "access_token": token,
@@ -307,8 +289,6 @@ class TuyaSmartScaleAPI:
         _LOGGER.debug(f"POST Analysis Reports:")
         _LOGGER.debug(f"URL: {url}")
         _LOGGER.debug(f"Body: {body_json}")
-        _LOGGER.debug(f"Body SHA256: {body_sha256}")
-        _LOGGER.debug(f"String to sign: {str_to_sign}")
         _LOGGER.debug(f"Headers: {headers}")
         
         response = requests.post(url, headers=headers, data=body_json)
