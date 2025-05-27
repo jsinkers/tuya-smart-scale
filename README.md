@@ -1,7 +1,7 @@
 # Tuya Smart Scale Integration & Utilities
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/jsinkers/tuya_smart_scale.svg)](https://github.com/jsinkers/tuya_smart_scale/releases/)
+[![GitHub release](https://img.shields.io/github/release/jsinkers/tuya-smart-scale.svg)](https://github.com/jsinkers/tuya-smart-scale/releases/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 This repository provides tools for working with Tuya smart scales, including a Home Assistant integration and standalone utilities.
@@ -17,8 +17,8 @@ A complete Home Assistant custom integration that automatically discovers users 
 1. Install [HACS](https://hacs.xyz/) if you haven't already
 2. Add this repository as a custom repository in HACS:
    - Go to HACS → Integrations → ⋮ → Custom repositories
-   - Add `https://github.com/jsinkers/tuya_smart_scale` as Integration
-3. Install "Tuya Smart Scale" from HACS
+   - Add `https://github.com/jsinkers/tuya-smart-scale` as Integration
+3. Download "Tuya Smart Scale" in HACS
 4. Restart Home Assistant
 5. Add integration via Settings → Devices & Services → Add Integration
 

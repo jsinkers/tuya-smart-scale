@@ -2,8 +2,8 @@
   "domain": "tuya_scale",
   "name": "Tuya Smart Scale",
   "version": "0.1.0",
-  "documentation": "https://github.com/jsinkers/tuya_smart_scale/custom_components/tuya_scale",
-  "issue_tracker": "https://github.com/jsinkers/tuya_smart_scale/issues",
+  "documentation": "https://github.com/jsinkers/tuya-smart-scale/blob/main/custom_components/tuya_scale/README.md",
+  "issue_tracker": "https://github.com/jsinkers/tuya-smart-scale/issues",
   "config_flow": true,
   "requirements": [
     "requests"
