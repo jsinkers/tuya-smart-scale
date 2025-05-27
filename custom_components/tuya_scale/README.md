@@ -47,9 +47,15 @@ Analysis reports for a given weight record include:
 
 ## Installation
 
-### HACS Installation (Recommended)
+### Installation via HACS (Recommended)
 
-*Coming soon - integration will be submitted to HACS*
+1. Install [HACS](https://hacs.xyz/) if you haven't already
+2. Add this repository as a custom repository in HACS:
+   - Go to HACS → Integrations → ⋮ → Custom repositories
+   - Add `https://github.com/jsinkers/tuya_smart_scale` as Integration
+3. Install "Tuya Smart Scale" from HACS
+4. Restart Home Assistant
+5. Add integration via Settings → Devices & Services → Add Integration
 
 ### Manual Installation
 
