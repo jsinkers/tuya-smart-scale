@@ -9,6 +9,7 @@ This repository provides tools for working with Tuya smart scales, including a H
 A complete Home Assistant custom integration that automatically discovers users and creates 20+ body composition sensors per user.
 
 **Quick Setup:**
+
 1. Copy `custom_components/tuya_scale/` to your Home Assistant config directory
 2. Restart Home Assistant
 3. Add integration via Settings → Devices & Services → Add Integration

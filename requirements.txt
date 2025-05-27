@@ -1,3 +1,0 @@
-requests
-tuya-cloud-sdk-python
-pandas
