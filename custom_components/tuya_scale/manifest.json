@@ -1,0 +1,17 @@
+{
+  "domain": "tuya_scale",
+  "name": "Tuya Smart Scale",
+  "version": "0.1.0",
+  "documentation": "https://github.com/jsinkers/tuya_smart_scale/custom_components/tuya_scale",
+  "issue_tracker": "https://github.com/jsinkers/tuya_smart_scale/issues",
+  "config_flow": true,
+  "requirements": [
+    "requests"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@jsinkers"
+  ],
+  "iot_class": "cloud_polling",
+  "integration_type": "hub"
+}
