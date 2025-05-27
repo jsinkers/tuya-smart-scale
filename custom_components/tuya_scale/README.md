@@ -11,43 +11,11 @@ A Home Assistant custom integration for Tuya smart scales that fetches user meas
 - **Real-time Updates**: Automatically fetches latest measurements and analysis reports
 - **Smart Data Handling**: Handles Tuya API quirks (like "wegith" typo) transparently
 
-## Supported Sensors
-
-The integration creates the following sensors for each user:
-
-### Basic Measurements
-
-A weight record from the scale includes:
-- **Weight** (kg) 
-- **Height** (cm)
-- **Body Resistance** (Ω)
-- **Measurement Time** (timestamp)
-
-### Body Composition Analysis
-
-Analysis reports for a given weight record include:
-- **BMI** - Body Mass Index
-- **Body Fat** (%) - Body fat percentage  
-- **Muscle Mass** (kg)
-- **Body Water** (%) - Body water percentage
-- **Bone Mass** (kg)
-- **Visceral Fat** - Visceral fat rating
-- **Protein** (kg)
-- **Fat-Free Mass (FFM)** (kg)
-- **Metabolism** - Basal metabolic rate
-- **Body Age** (years)
-- **Body Score** - Overall body score
-- **Body Type** - Body type classification
-
-### User Information
-
-- **User ID** - Tuya user identifier
-- **Device ID** - Scale device identifier
-- **Nickname** - User's display name
-
 ## Installation
 
 ### Installation via HACS (Recommended)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jsinkers&repository=tuya-smart-scale&category=integration)
 
 1. Install [HACS](https://hacs.xyz/) if you haven't already
 2. Add this repository as a custom repository in HACS:
@@ -111,6 +79,40 @@ Use these sensors in:
 - **Automations**: Trigger actions based on weight changes or health metrics
 - **Scripts**: Create custom health tracking workflows
 - **History**: View long-term trends and progress
+
+## Supported Sensors
+
+The integration creates the following sensors for each user:
+
+### Basic Measurements
+
+A weight record from the scale includes:
+- **Weight** (kg) 
+- **Height** (cm)
+- **Body Resistance** (Ω)
+- **Measurement Time** (timestamp)
+
+### Body Composition Analysis
+
+Analysis reports for a given weight record include:
+- **BMI** - Body Mass Index
+- **Body Fat** (%) - Body fat percentage  
+- **Muscle Mass** (kg)
+- **Body Water** (%) - Body water percentage
+- **Bone Mass** (kg)
+- **Visceral Fat** - Visceral fat rating
+- **Protein** (kg)
+- **Fat-Free Mass (FFM)** (kg)
+- **Metabolism** - Basal metabolic rate
+- **Body Age** (years)
+- **Body Score** - Overall body score
+- **Body Type** - Body type classification
+
+### User Information
+
+- **User ID** - Tuya user identifier
+- **Device ID** - Scale device identifier
+- **Nickname** - User's display name
 
 ## Troubleshooting
 
