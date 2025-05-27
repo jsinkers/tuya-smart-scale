@@ -1,33 +1,39 @@
-# Tuya Body Fat Scale data download
+# Tuya Smart Scale Integration & Utilities
 
-- Python script to download data from Tuya Body Fat Scale. It first downloads the history measurements and then gets the detailed analysis report for each measurement. Only new records that have not been downloaded before are fetched. Records are saved in a JSON file `scale_data.json`.
-- Tuya API keys need to be provided in the `.env` file.
-- API Documentation at https://developer.tuya.com/en/docs/cloud/body-fat-scale?id=K9jgsgbn2mxcl
+This repository provides tools for working with Tuya smart scales, including a Home Assistant integration and standalone utilities.
 
-## Data Dictionary for `scale_data.json`
+## 🏠 Home Assistant Integration
 
-This document provides a description of each field in the `scale_data.json` file along with their units.
+**Location:** `custom_components/tuya_scale/`
 
-| Field Name         | Description                                      | Units          |
-|--------------------|--------------------------------------------------|----------------|
-| `body_r`           | Resistance measurement from scale                | Ohms (?)       |
-| `create_time`      | Timestamp when the record was created            | milliseconds since Unix epoch |
-| `device_id`        | Unique identifier for the device                 | string         |
-| `height`           | Height measurement                               | centimeters    |
-| `id`               | Unique identifier for the record                 | string         |
-| `nickname`         | Tuya Nickname of the user                        | string         |
-| `user_id`          | Tuya Unique identifier for the user              | string         |
-| `wegith`           | Weight measurement (typo from Tuya API)          | kilograms      |
-| `analysis_report`  | Detailed analysis report for the record          | JSON object    |
-| `bmi`              | Body Mass Index                                  | unitless       |
-| `body_age`         | Physical age                                         | years          |
-| `body_score`       | Body score                                       | unitless       |
-| `body_type`        | Body type                                        | unitless       |
-| `bones`            | Bone mass                                        | kilograms      |
-| `fat`              | Body fat percentage                              | percentage     |
-| `ffm`              | Fat-free mass (Lean body mass)                                    | kilograms      |
-| `metabolism`       | Basal metabolic rate                                       | unitless       |
-| `muscle`           | Muscle mass                                      | kilograms      |
-| `protein`          | Protein                                          | kilograms      |
-| `visceral_fat`     | Visceral fat rating                               | unitless       |
-| `water`            | Body water percentage                            | percentage     |
+A complete Home Assistant custom integration that automatically discovers users and creates 20+ body composition sensors per user.
+
+**Quick Setup:**
+1. Copy `custom_components/tuya_scale/` to your Home Assistant config directory
+2. Restart Home Assistant
+3. Add integration via Settings → Devices & Services → Add Integration
+4. Enter your Tuya Cloud API credentials
+
+See [integration README](custom_components/tuya_scale/README.md) for detailed setup instructions.
+
+## 🔧 Utilities
+
+**Location:** `utilities/`
+
+Standalone Python scripts for downloading and working with Tuya scale data outside of Home Assistant.
+
+- `tuya_scale_downloader.py` - Downloads measurement history and analysis reports to JSON files
+- Requires `.env` file with Tuya API credentials
+- Incremental updates (only fetches new records)
+
+See [utilities README](utilities/README.md) for usage instructions.
+
+## Requirements
+
+- Tuya Cloud API credentials (Access ID, Access Key, Device ID)
+- For Home Assistant: HA 2024.1.0+
+- For utilities: Python 3.7+, custom tuya-connector-python
+
+## API Reference
+
+Based on [Tuya Body Fat Scale API Documentation](https://developer.tuya.com/en/docs/cloud/body-fat-scale?id=K9jgsgbn2mxcl)

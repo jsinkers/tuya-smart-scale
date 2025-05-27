@@ -1,44 +1,141 @@
-# Tuya Smart Scale Integration
+# Tuya Smart Scale Home Assistant Integration
 
-This project provides an integration for Home Assistant to download and manage data from Tuya smart scales. The integration allows users to monitor their weight and other related metrics directly within Home Assistant.
+A Home Assistant custom integration for Tuya smart scales that fetches user measurement data from the Tuya Cloud API. This integration supports multiple users per scale and exposes all body composition metrics as Home Assistant sensors. The official Tuya integration does not support body fat scales, so this custom integration fills that gap.
 
 ## Features
 
-- Fetch and display weight data from Tuya smart scales.
-- Easy configuration through the Home Assistant UI.
-- Supports multiple smart scale devices.
+- **Multi-User Support**: Automatically discovers and creates sensors for all users associated with your smart scale
+- **Body Composition Analysis**: Exposes 20 different metrics including weight, BMI, body fat, muscle mass, water percentage, bone mass, and more
+- **Tuya Cloud API Integration**: Uses official Tuya v2.0 Cloud API with proper authentication and signature handling
+- **Easy Configuration**: Simple setup through Home Assistant's config flow UI
+- **Real-time Updates**: Automatically fetches latest measurements and analysis reports
+- **Smart Data Handling**: Handles Tuya API quirks (like "wegith" typo) transparently
+
+## Supported Sensors
+
+The integration creates the following sensors for each user:
+
+### Basic Measurements
+
+A weight record from the scale includes:
+- **Weight** (kg) 
+- **Height** (cm)
+- **Body Resistance** (Ω)
+- **Measurement Time** (timestamp)
+
+### Body Composition Analysis
+
+Analysis reports for a given weight record include:
+- **BMI** - Body Mass Index
+- **Body Fat** (%) - Body fat percentage  
+- **Muscle Mass** (kg)
+- **Body Water** (%) - Body water percentage
+- **Bone Mass** (kg)
+- **Visceral Fat** - Visceral fat rating
+- **Protein** (kg)
+- **Fat-Free Mass (FFM)** (kg)
+- **Metabolism** - Basal metabolic rate
+- **Body Age** (years)
+- **Body Score** - Overall body score
+- **Body Type** - Body type classification
+
+### User Information
+
+- **User ID** - Tuya user identifier
+- **Device ID** - Scale device identifier
+- **Nickname** - User's display name
 
 ## Installation
 
-1. Clone this repository to your Home Assistant `custom_components` directory:
+### HACS Installation (Recommended)
+
+*Coming soon - integration will be submitted to HACS*
+
+### Manual Installation
+
+1. Copy the `tuya_scale` folder to your Home Assistant `custom_components` directory:
    ```
-   git clone https://github.com/yourusername/tuya_smart_scale.git
+   /config/custom_components/tuya_scale/
    ```
 
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+2. Restart Home Assistant
 
-3. Restart Home Assistant.
+3. The integration will be available in **Settings** → **Devices & Services** → **Add Integration**
 
 ## Configuration
 
-To set up the Tuya Smart Scale integration, follow these steps:
+### Prerequisites
 
-1. Go to the Home Assistant UI.
-2. Navigate to `Configuration` > `Integrations`.
-3. Click on `Add Integration` and search for `Tuya Smart Scale`.
-4. Follow the prompts to enter your Tuya account credentials and configure your devices.
+You need Tuya Cloud API credentials:
+
+1. Create a Tuya Developer Account at [Tuya IoT Platform](https://iot.tuya.com/)
+2. Create a new project and obtain:
+   - **Access ID** (Client ID)
+   - **Access Key** (Client Secret)
+   - **Device ID** of your smart scale
+3. Select your region (Americas, Europe, China, or India)
+
+### Setup in Home Assistant
+
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration** and search for "Tuya Smart Scale"
+3. Enter your Tuya Cloud API credentials:
+   - Access ID
+   - Access Key  
+   - Device ID
+   - Region
+4. Click **Submit**
+
+The integration will automatically:
+- Validate your credentials
+- Discover all users associated with the scale
+- Create sensors for each user's measurements
+- Start fetching data every 60 seconds
 
 ## Usage
 
-Once configured, the Tuya Smart Scale integration will automatically fetch data from your smart scales. You can view the data in the Home Assistant dashboard and create automations based on the scale readings.
+Once configured, you'll see sensors for each user in the format:
+- `sensor.tuya_scale_[nickname]_weight`
+- `sensor.tuya_scale_[nickname]_body_fat`
+- `sensor.tuya_scale_[nickname]_bmi`
+- etc.
+
+Use these sensors in:
+- **Dashboards**: Display current measurements and trends
+- **Automations**: Trigger actions based on weight changes or health metrics
+- **Scripts**: Create custom health tracking workflows
+- **History**: View long-term trends and progress
+
+## Troubleshooting
+
+### Common Issues
+
+**"Invalid credentials" error:**
+- Verify your Access ID and Access Key are correct
+- Ensure you've selected the correct region
+- Check that your Tuya project has the necessary permissions
+
+**"Device not found" error:**
+- Confirm the Device ID is correct (found in Tuya Smart app)
+- Ensure the device is online and accessible via Tuya Cloud
+
+**No recent data:**
+- The integration only fetches data when measurements exist
+- Use your scale to generate new measurements
+- Check that the scale is connected to Wi-Fi and syncing to Tuya Cloud
+
+## Technical Details
+
+- **API Version**: Tuya Cloud API v2.0
+- **Update Interval**: 60 seconds
+- **Data Source**: Tuya Cloud (not local device communication)
+- **Authentication**: OAuth 2.0 with signature-based requests
+- **Version**: 0.1 (Initial Release)
 
 ## Contributing
 
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
+This integration is open source. Contributions, bug reports, and feature requests are welcome on GitHub.
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+This project is licensed under the MIT License.
