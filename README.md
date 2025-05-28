@@ -15,6 +15,7 @@ This Home Assistant custom integration for Tuya smart scales fetches user measur
 - **Multi-User Support**: discovers and creates sensors for all users associated with your smart scale
 - **Body Composition Analysis**: Exposes 20 different metrics including weight, BMI, body fat, muscle mass, water percentage, bone mass, and more
 - **Tuya Cloud API Integration**: Uses official Tuya v2.0 Cloud API 
+- **Device Registry Support**: Automatically retrieves device information (name, model) for proper device identification in Home Assistant
 - **Easy Configuration**: Simple setup through Home Assistant's config flow UI
 - **Real-time Updates**: Automatically fetches latest measurements and analysis reports
 - **Smart Data Handling**: Handles Tuya API quirks

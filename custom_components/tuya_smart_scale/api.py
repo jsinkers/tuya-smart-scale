@@ -300,3 +300,81 @@ class TuyaSmartScaleAPI:
             raise Exception(f"Failed to get analysis report: {response.text}")
             
         return response.json().get("result", {})
+
+    def get_device_details_v2(self) -> Dict[str, Any]:
+        """Get comprehensive device details using v2.0 device management endpoint.
+        
+        This v2.0 endpoint provides more detailed information than the v1.0 endpoint,
+        including online status, detailed properties, and capabilities.
+        
+        Returns:
+            Dict containing device details including:
+            - is_online: Boolean indicating if device is currently online
+            - ip: Device IP address
+            - time_zone: Device timezone
+            - lat/lon: Geographic location
+            - update_time: Last update timestamp
+            - name: Device name
+            - model: Device model
+            - product_name: Product name
+            - custom_name: User-assigned name
+            - And many other device properties
+        """
+        token = self.get_access_token()
+        path = f"/v2.0/cloud/thing/{self.device_id}"
+        
+        sign, t, canonical_path = self._sign_request("GET", path, access_token=token, params=None)
+        url = f"{self.endpoint}{canonical_path}"
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        _LOGGER.debug(f"GET Device Details v2.0: {url}")
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code != 200:
+            _LOGGER.error(f"Failed to get device details v2.0: {response.text}")
+            raise Exception(f"Failed to get device details v2.0: {response.text}")
+            
+        return response.json().get("result", {})
+
+    def get_device_identification(self) -> Dict[str, str]:
+        """Get device identification info (name, model, product) for device registry.
+        
+        Returns a simplified dict with just the useful identification fields:
+        - name: Device name
+        - model: Device model number
+        - product_name: Product name
+        - custom_name: User-assigned name
+        """
+        try:
+            details = self.get_device_details_v2()
+            return {
+                "name": details.get("name", ""),
+                "model": details.get("model", ""),
+                "product_name": details.get("product_name", ""),
+                "custom_name": details.get("custom_name", "")
+            }
+        except Exception as e:
+            _LOGGER.warning(f"Could not get device identification: {e}")
+            # Fallback to basic device info
+            try:
+                basic_info = self.get_device_info()
+                return {
+                    "name": basic_info.get("name", ""),
+                    "model": basic_info.get("model", ""),
+                    "product_name": basic_info.get("product_name", ""),
+                    "custom_name": basic_info.get("name", "")
+                }
+            except Exception:
+                return {
+                    "name": "Tuya Smart Scale",
+                    "model": "Unknown",
+                    "product_name": "Smart Scale",
+                    "custom_name": "Smart Scale"
+                }

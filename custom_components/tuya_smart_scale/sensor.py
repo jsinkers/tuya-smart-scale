@@ -31,6 +31,20 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
             self._attr_native_unit_of_measurement = config["unit"]
             self._attr_device_class = config["device_class"]
             self._attr_icon = config["icon"]
+
+    @property
+    def device_info(self):
+        """Return device information for device registry."""
+        device_identification = self.coordinator.device_info or {}
+        
+        return {
+            "identifiers": {(DOMAIN, self.device_id)},
+            "name": device_identification.get("custom_name") or device_identification.get("name") or "Tuya Smart Scale",
+            "manufacturer": "Tuya",
+            "model": device_identification.get("model") or "Smart Scale",
+            "sw_version": None,
+            "configuration_url": "https://iot.tuya.com/",
+        }
     
     @property
     def native_value(self):
@@ -71,9 +85,35 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
                 return None
         return value
 
+    @property
+    def extra_state_attributes(self):
+        """Return additional state attributes."""
+        attributes = {}
+        
+        # Add device identification info as attributes
+        device_identification = self.coordinator.device_info or {}
+        if device_identification.get("product_name"):
+            attributes["product_name"] = device_identification["product_name"]
+        if device_identification.get("model"):
+            attributes["device_model"] = device_identification["model"]
+        
+        # Add user info
+        user_data = self.coordinator.data.get(self.user_id)
+        if user_data:
+            if user_data.get("nickname"):
+                attributes["user_nickname"] = user_data["nickname"]
+            attributes["user_id"] = self.user_id
+            attributes["device_id"] = self.device_id
+            
+        return attributes
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Tuya Smart Scale sensors for all users based on a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
+    
+    # Ensure device info is fetched before creating sensors
+    await coordinator.get_device_info()
+    
     entities = []
     # coordinator.data is a dict: {user_id: {measurement data, 'nickname': ...}}
     for user_id, user_data in coordinator.data.items():

@@ -22,6 +22,7 @@ class TuyaSmartScaleDataCoordinator(DataUpdateCoordinator):
         )
         self.api_client = api_client
         self.data = {}
+        self._device_info = None
     
     @property
     def device_ids(self):
@@ -29,6 +30,30 @@ class TuyaSmartScaleDataCoordinator(DataUpdateCoordinator):
         if not self.data:
             return []
         return list(self.data.keys())
+
+    @property
+    def device_info(self):
+        """Get cached device information."""
+        return self._device_info
+
+    async def get_device_info(self):
+        """Get device identification information."""
+        if self._device_info is None:
+            try:
+                self._device_info = await self.hass.async_add_executor_job(
+                    self.api_client.get_device_identification
+                )
+                _LOGGER.debug(f"Fetched device info: {self._device_info}")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to fetch device info: {err}")
+                # Use fallback device info
+                self._device_info = {
+                    "name": "Tuya Smart Scale",
+                    "model": "Unknown",
+                    "product_name": "Smart Scale",
+                    "custom_name": "Smart Scale"
+                }
+        return self._device_info
 
     async def _async_update_data(self):
         """Fetch data from Tuya API."""
