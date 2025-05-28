@@ -35,13 +35,13 @@ def test_integration_files():
     
     # Test file existence and basic structure
     integration_files = [
-        "custom_components/tuya_scale/__init__.py",
-        "custom_components/tuya_scale/manifest.json", 
-        "custom_components/tuya_scale/config_flow.py",
-        "custom_components/tuya_scale/const.py",
-        "custom_components/tuya_scale/api.py",
-        "custom_components/tuya_scale/coordinator.py",
-        "custom_components/tuya_scale/sensor.py"
+        "custom_components/tuya_smart_scale/__init__.py",
+        "custom_components/tuya_smart_scale/manifest.json", 
+        "custom_components/tuya_smart_scale/config_flow.py",
+        "custom_components/tuya_smart_scale/const.py",
+        "custom_components/tuya_smart_scale/api.py",
+        "custom_components/tuya_smart_scale/coordinator.py",
+        "custom_components/tuya_smart_scale/sensor.py"
     ]
     
     for file_path in integration_files:
@@ -53,7 +53,7 @@ def test_integration_files():
     
     # Test manifest.json structure
     try:
-        with open("custom_components/tuya_scale/manifest.json", "r") as f:
+        with open("custom_components/tuya_smart_scale/manifest.json", "r") as f:
             manifest = json.load(f)
         required_keys = ["domain", "name", "version", "dependencies", "requirements"]
         for key in required_keys:

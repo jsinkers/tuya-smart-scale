@@ -305,7 +305,7 @@ def main():
             nickname = user_data.get('nickname', user_id)
             for sensor_type in ["weight", "wegith", "bmi", "body_fat"]:  # Just show a few key ones
                 if sensor_type in sensor_values[user_id]:
-                    entity_id = f"sensor.tuya_scale_{user_id}_{sensor_type}"
+                    entity_id = f"sensor.tuya_smart_scale_{user_id}_{sensor_type}"
                     friendly_name = f"Tuya Scale {nickname} {sensor_type.replace('_', ' ').title()}"
                     value = sensor_values[user_id][sensor_type]
                     print(f"   • {entity_id}")

@@ -33,9 +33,9 @@ def check_repository_structure():
     required_files = [
         f"{root_prefix}README.md",
         f"{root_prefix}hacs.json", 
-        f"{root_prefix}custom_components/tuya_scale/__init__.py",
-        f"{root_prefix}custom_components/tuya_scale/manifest.json",
-        f"{root_prefix}custom_components/tuya_scale/sensor.py",
+        f"{root_prefix}custom_components/tuya_smart_scale/__init__.py",
+        f"{root_prefix}custom_components/tuya_smart_scale/manifest.json",
+        f"{root_prefix}custom_components/tuya_smart_scale/sensor.py",
         f"{root_prefix}LICENSE"
     ]
     
@@ -57,7 +57,7 @@ def validate_manifest_json():
     required_fields = ["domain", "name", "version", "documentation", "issue_tracker", "codeowners"]
     
     try:
-        with open(f"{root_prefix}custom_components/tuya_scale/manifest.json", "r") as f:
+        with open(f"{root_prefix}custom_components/tuya_smart_scale/manifest.json", "r") as f:
             manifest = json.load(f)
         
         all_good = True
@@ -102,12 +102,12 @@ def check_integration_files():
     print("=" * 50)
     
     integration_files = [
-        f"{root_prefix}custom_components/tuya_scale/__init__.py",
-        f"{root_prefix}custom_components/tuya_scale/api.py", 
-        f"{root_prefix}custom_components/tuya_scale/config_flow.py",
-        f"{root_prefix}custom_components/tuya_scale/const.py",
-        f"{root_prefix}custom_components/tuya_scale/coordinator.py",
-        f"{root_prefix}custom_components/tuya_scale/sensor.py"
+        f"{root_prefix}custom_components/tuya_smart_scale/__init__.py",
+        f"{root_prefix}custom_components/tuya_smart_scale/api.py", 
+        f"{root_prefix}custom_components/tuya_smart_scale/config_flow.py",
+        f"{root_prefix}custom_components/tuya_smart_scale/const.py",
+        f"{root_prefix}custom_components/tuya_smart_scale/coordinator.py",
+        f"{root_prefix}custom_components/tuya_smart_scale/sensor.py"
     ]
     
     all_good = True
