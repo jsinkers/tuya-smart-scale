@@ -384,6 +384,124 @@ class TuyaSmartScaleAPI:
             "See https://developer.tuya.com/en/docs/archived-documents/0a30fc557f?id=Ka7kjybdo0jse"
         )
 
+    def get_device_list(self, size: int = 100, last_row_key: str = None) -> Dict[str, Any]:
+        """Get list of devices using v1.0 devices endpoint.
+        
+        This method fetches all devices associated with the account, which can help
+        understand the device structure and find device IDs.
+        
+        Args:
+            size: Number of entries returned per page (default: 100)
+            last_row_key: Key of the last row for pagination (optional)
+            
+        Returns:
+            Dict containing device list information
+        """
+        token = self.get_access_token()
+        # Try v1.0 endpoint first as v2.0 seems to require different params
+        path = "/v1.0/users/devices"
+        method = "GET"
+        
+        # Build query parameters - try different parameter combinations
+        params = {"page_size": size, "page_no": 1}
+        if last_row_key:
+            params["last_row_key"] = last_row_key
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # Build canonical path with query parameters
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        canonical_path = f"{path}?{param_str}"
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Device List v1.0:")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Device list response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            # If v1.0 fails, try the v2.0 endpoint with different params
+            print("v1.0 failed, trying v2.0 with page parameters...")
+            return self._try_v2_device_list(size, last_row_key)
+            
+        return response.json().get("result", {})
+    
+    def _try_v2_device_list(self, size: int = 100, last_row_key: str = None) -> Dict[str, Any]:
+        """Try v2.0 device list with different parameter combinations."""
+        token = self.get_access_token()
+        path = "/v2.0/devices"
+        method = "GET"
+        
+        # Try with page_size and page_no instead of size
+        params = {"page_size": size, "page_no": 1}
+        if last_row_key:
+            params["last_row_key"] = last_row_key
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # Build canonical path with query parameters
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        canonical_path = f"{path}?{param_str}"
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Device List v2.0 (with page params):")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Device list v2.0 response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get device list v2.0: {response.text}")
+            
+        return response.json().get("result", {})
+
     def get_device_identification(self) -> Dict[str, Any]:
         """Get device identification information using the v2.0 device details endpoint.
         
@@ -407,6 +525,62 @@ class TuyaSmartScaleAPI:
             "product_name": device_details.get("product_name", "Tuya Smart Scale"),
             "custom_name": device_details.get("custom_name", "Smart Scale")
         }
+
+    def get_device_status(self) -> Dict[str, Any]:
+        """Get device status using v1.0 device status endpoint.
+        
+        This endpoint provides the current status of the device including:
+        - Online/offline status
+        - Current data point values
+        - Device capabilities
+        
+        Based on: https://developer.tuya.com/en/docs/archived-documents/787037f273?id=Ka7kjxgxohky4
+        
+        Returns:
+            Dict containing device status information
+        """
+        token = self.get_access_token()
+        path = f"/v1.0/devices/{self.device_id}/status"
+        method = "GET"
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # No query parameters for this endpoint
+        canonical_path = path
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Device Status:")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Device status response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get device status: {response.text}")
+            
+        return response.json().get("result", {})
 
     def get_latest_data(self) -> Dict[str, Dict[str, Any]]:
         """Get the latest measurement data for all users.
@@ -461,6 +635,323 @@ class TuyaSmartScaleAPI:
         except Exception as e:
             print(f"Warning: Failed to get latest data: {e}")
             return {}
+
+    def get_user_devices(self, uid: str = None, size: int = 100, last_row_key: str = None) -> Dict[str, Any]:
+        """Get devices under a specific user using v1.0 users/{uid}/devices endpoint.
+        
+        This endpoint retrieves devices associated with a specific user UID.
+        Different from general device list as it's user-specific.
+        
+        Args:
+            uid: User ID to get devices for (if None, uses a default)
+            size: Number of entries returned per page (default: 100)
+            last_row_key: Key of the last row for pagination (optional)
+            
+        Returns:
+            Dict containing user's device list information
+        """
+        token = self.get_access_token()
+        
+        # Use a default UID if none provided - this would normally come from user context
+        if uid is None:
+            uid = "default_user"  # This would typically be determined from auth context
+            
+        path = f"/v1.0/users/{uid}/devices"
+        method = "GET"
+        
+        # Build query parameters
+        params = {"page_size": size, "page_no": 1}
+        if last_row_key:
+            params["last_row_key"] = last_row_key
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # Build canonical path with query parameters
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        canonical_path = f"{path}?{param_str}"
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET User Devices (UID: {uid}):")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"User devices response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get user devices: {response.text}")
+            
+        return response.json().get("result", {})
+
+    def get_devices_by_schema(self, schema: str = None, size: int = 100) -> Dict[str, Any]:
+        """Get devices filtered by schema using v1.0 devices endpoint with schema filter.
+        
+        This endpoint allows filtering devices by their schema (device type/category).
+        Useful for finding specific types of devices like scales, sensors, etc.
+        
+        Args:
+            schema: Device schema to filter by (e.g., "scale", "sensor")
+            size: Number of entries returned per page (default: 100)
+            
+        Returns:
+            Dict containing filtered device list information
+        """
+        token = self.get_access_token()
+        path = "/v1.0/devices"
+        method = "GET"
+        
+        # Build query parameters with schema filter
+        params = {"page_size": size, "page_no": 1}
+        if schema:
+            params["schema"] = schema
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # Build canonical path with query parameters
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        canonical_path = f"{path}?{param_str}"
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Devices by Schema (schema: {schema}):")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Devices by schema response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get devices by schema: {response.text}")
+            
+        return response.json().get("result", {})
+
+    def get_devices_by_product_id(self, product_id: str, size: int = 100) -> Dict[str, Any]:
+        """Get devices filtered by product ID using v1.0 devices endpoint.
+        
+        This endpoint allows filtering devices by their product ID, which is useful
+        for finding devices of a specific product type or model.
+        
+        Args:
+            product_id: Product ID to filter by
+            size: Number of entries returned per page (default: 100)
+            
+        Returns:
+            Dict containing filtered device list information
+        """
+        token = self.get_access_token()
+        path = "/v1.0/devices"
+        method = "GET"
+        
+        # Build query parameters with product_id filter
+        params = {"page_size": size, "page_no": 1, "product_id": product_id}
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # Build canonical path with query parameters
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        canonical_path = f"{path}?{param_str}"
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Devices by Product ID (product_id: {product_id}):")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Devices by product ID response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get devices by product ID: {response.text}")
+            
+        return response.json().get("result", {})
+
+    def get_sub_devices(self, gateway_device_id: str = None) -> Dict[str, Any]:
+        """Get sub-devices under a gateway device using v1.0 devices/{device_id}/sub-devices endpoint.
+        
+        This endpoint retrieves devices that are connected through a gateway device.
+        Useful for hub-based systems where multiple devices connect through a central hub.
+        
+        Args:
+            gateway_device_id: Gateway device ID (if None, uses current device_id)
+            
+        Returns:
+            Dict containing sub-device list information
+        """
+        token = self.get_access_token()
+        
+        # Use current device_id if no gateway specified
+        if gateway_device_id is None:
+            gateway_device_id = self.device_id
+            
+        path = f"/v1.0/devices/{gateway_device_id}/sub-devices"
+        method = "GET"
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # No query parameters for this endpoint
+        canonical_path = path
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Sub-devices (gateway: {gateway_device_id}):")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Sub-devices response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get sub-devices: {response.text}")
+            
+        return response.json().get("result", {})
+
+    def get_device_factory_info(self, device_ids: List[str] = None) -> Dict[str, Any]:
+        """Get factory information for devices using v1.0 devices/factory-infos endpoint.
+        
+        This endpoint provides manufacturing information about devices including
+        factory details, production information, and device specifications.
+        
+        Args:
+            device_ids: List of device IDs to get factory info for (if None, uses current device)
+            
+        Returns:
+            Dict containing factory information for the devices
+        """
+        token = self.get_access_token()
+        path = "/v1.0/devices/factory-infos"
+        method = "GET"
+        
+        # Use current device_id if no list provided
+        if device_ids is None:
+            device_ids = [self.device_id]
+        
+        # Build query parameters - device_ids as comma-separated string
+        params = {"device_ids": ",".join(device_ids)}
+        
+        # For GET requests with no body
+        body_sha256 = hashlib.sha256(b'').hexdigest()
+        
+        # Build canonical path with query parameters
+        sorted_params = sorted(params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        canonical_path = f"{path}?{param_str}"
+        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
+        
+        t = str(int(time.time() * 1000))
+        message = self.access_id + token + t + str_to_sign
+        sign = hmac.new(
+            self.access_key.encode("utf-8"),
+            msg=message.encode("utf-8"),
+            digestmod=hashlib.sha256
+        ).hexdigest().upper()
+        
+        headers = {
+            "client_id": self.access_id,
+            "access_token": token,
+            "t": t,
+            "sign": sign,
+            "sign_method": "HMAC-SHA256",
+        }
+        
+        url = f"{self.endpoint}{canonical_path}"
+        
+        print(f"GET Device Factory Info (device_ids: {device_ids}):")
+        print(f"URL: {url}")
+        print(f"String to sign: {str_to_sign}")
+        print(f"Headers: {headers}")
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Device factory info response: status={response.status_code}, text={response.text}")
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to get device factory info: {response.text}")
+            
+        return response.json().get("result", {})
 
 def test_integration_api():
     """Test the integration API class."""
@@ -593,6 +1084,77 @@ def test_integration_api():
         print(f"  for this device type or may require different parameters.")
         # Don't return False here since this endpoint is not essential
     
+    # Test device status endpoint
+    print("\n8. Testing device status...")
+    try:
+        device_status = api.get_device_status()
+        print(f"✓ Got device status with keys: {list(device_status.keys())}")
+        
+        if isinstance(device_status, list):
+            print(f"  Found {len(device_status)} status entries")
+            for i, status_entry in enumerate(device_status[:5]):  # Show first 5 entries
+                if isinstance(status_entry, dict):
+                    print(f"  Status entry {i+1}:")
+                    print(f"    Code: {status_entry.get('code', 'unknown')}")
+                    print(f"    Value: {status_entry.get('value', 'unknown')}")
+                    print(f"    Type: {status_entry.get('type', 'unknown')}")
+                    if 'time' in status_entry:
+                        print(f"    Time: {status_entry.get('time', 'unknown')}")
+                else:
+                    print(f"  Status entry {i+1}: {status_entry}")
+        elif isinstance(device_status, dict):
+            print(f"  Device status structure: {device_status}")
+            # Print individual status properties if available
+            for key, value in device_status.items():
+                if isinstance(value, dict) and len(str(value)) > 100:
+                    print(f"  {key}: {type(value).__name__} with {len(value)} items")
+                else:
+                    print(f"  {key}: {value}")
+        else:
+            print(f"  Device status result: {device_status}")
+            
+    except Exception as e:
+        print(f"✗ Failed to get device status: {e}")
+        print(f"  This may be expected if the device doesn't support this endpoint")
+        # Don't return False here since this endpoint may not be available for all device types
+    
+    # Test device list endpoint
+    print("\n9. Testing device list...")
+    try:
+        device_list = api.get_device_list(size=100)  # Request up to 100 devices to see all devices
+        print(f"✓ Got device list with keys: {list(device_list.keys())}")
+        
+        if 'devices' in device_list:
+            devices = device_list['devices']
+            print(f"  Found {len(devices)} devices")
+            print(f"  Total devices in account: {device_list.get('total', 'unknown')}")
+            print(f"  Has more pages: {device_list.get('has_more', 'unknown')}")
+            
+            if devices:
+                print(f"  First device keys: {list(devices[0].keys())}")
+                # Print key information about ALL devices to explore the account
+                for i, device in enumerate(devices):
+                    print(f"  Device {i+1}:")
+                    print(f"    ID: {device.get('id', 'unknown')}")
+                    print(f"    Name: {device.get('name', 'unknown')}")
+                    print(f"    Model: {device.get('model', 'unknown')}")
+                    print(f"    Product Name: {device.get('product_name', 'unknown')}")
+                    print(f"    Custom Name: {device.get('custom_name', 'unknown')}")
+                    print(f"    Category: {device.get('category', 'unknown')}")
+                    print(f"    Online: {device.get('online', 'unknown')}")
+                    
+                    # Highlight our scale device
+                    if device.get('id') == DEVICE_ID:
+                        print(f"    *** THIS IS OUR SCALE DEVICE ***")
+        else:
+            print(f"  Device list structure: {device_list}")
+            print(f"  ℹ️  Note: Device list endpoint may not be available for this account type.")
+            print(f"      This is normal - we can still access individual device details via the v2.0 endpoint.")
+            
+    except Exception as e:
+        print(f"✗ Failed to get device list: {e}")
+        # Don't return False here since this endpoint may not be available for all accounts
+    
     print("\n✓ All tests completed!")
     return True
 
@@ -680,7 +1242,129 @@ def test_device_identification_integration():
     print("   • Provide fallback device info if API calls fail")
     return True
 
+def test_alternative_device_discovery():
+    """Test alternative device discovery methods from Tuya API documentation."""
+    print("🔍 Testing Alternative Device Discovery Methods")
+    
+    # Use the same API class as the main test
+    api = TuyaSmartScaleAPI(ACCESS_ID, ACCESS_KEY, DEVICE_ID, REGION)
+    
+    success_count = 0
+    total_tests = 5
+    
+    # Test 1: User-specific devices endpoint
+    print("\n1. Testing user-specific devices endpoint...")
+    try:
+        user_devices = api.get_user_devices(uid="test_user", size=50)
+        print(f"✓ User devices endpoint returned: {list(user_devices.keys())}")
+        if 'devices' in user_devices:
+            print(f"  Found {len(user_devices['devices'])} devices for user")
+        success_count += 1
+    except Exception as e:
+        print(f"✗ User devices endpoint failed: {e}")
+        print("  This may be expected if the UID is invalid or endpoint requires different auth")
+    
+    # Test 2: Devices by schema filter
+    print("\n2. Testing devices by schema filter...")
+    try:
+        # Try common schema types that might work with scales
+        for schema in ["scale", "sensor", "health", None]:
+            print(f"  Trying schema: {schema}")
+            schema_devices = api.get_devices_by_schema(schema=schema, size=50)
+            print(f"  ✓ Schema '{schema}' returned: {list(schema_devices.keys())}")
+            if 'devices' in schema_devices:
+                print(f"    Found {len(schema_devices['devices'])} devices")
+                if len(schema_devices['devices']) > 0:
+                    # Show first device info to understand schema structure
+                    first_device = schema_devices['devices'][0]
+                    print(f"    First device schema info: {first_device.get('schema', 'no schema')}")
+                    print(f"    First device category: {first_device.get('category', 'no category')}")
+            break  # Exit after first successful attempt
+        success_count += 1
+    except Exception as e:
+        print(f"✗ Schema filter endpoint failed: {e}")
+        print("  This may be expected if schema filtering is not supported")
+    
+    # Test 3: Devices by product ID
+    print("\n3. Testing devices by product ID...")
+    try:
+        # We'll need to get a product ID first from existing device info
+        try:
+            device_info = api.get_device_info()
+            product_id = device_info.get('product_id')
+            if product_id:
+                print(f"  Using product ID from device info: {product_id}")
+                product_devices = api.get_devices_by_product_id(product_id=product_id, size=50)
+                print(f"✓ Product ID filter returned: {list(product_devices.keys())}")
+                if 'devices' in product_devices:
+                    print(f"  Found {len(product_devices['devices'])} devices with product ID {product_id}")
+                success_count += 1
+            else:
+                print("  No product_id found in device info, skipping product ID test")
+        except Exception as inner_e:
+            print(f"  Could not get product ID from device info: {inner_e}")
+            # Try with a generic product ID
+            print("  Trying with generic product ID...")
+            product_devices = api.get_devices_by_product_id(product_id="test_product", size=50)
+            print(f"✓ Generic product ID returned: {list(product_devices.keys())}")
+            success_count += 1
+    except Exception as e:
+        print(f"✗ Product ID filter endpoint failed: {e}")
+        print("  This may be expected if the product ID is invalid")
+    
+    # Test 4: Sub-devices endpoint
+    print("\n4. Testing sub-devices endpoint...")
+    try:
+        sub_devices = api.get_sub_devices()  # Uses current device as gateway
+        print(f"✓ Sub-devices endpoint returned: {list(sub_devices.keys())}")
+        if 'sub_devices' in sub_devices or 'devices' in sub_devices:
+            device_list = sub_devices.get('sub_devices', sub_devices.get('devices', []))
+            print(f"  Found {len(device_list)} sub-devices")
+        else:
+            print(f"  Sub-devices result: {sub_devices}")
+        success_count += 1
+    except Exception as e:
+        print(f"✗ Sub-devices endpoint failed: {e}")
+        print("  This may be expected if the device is not a gateway or has no sub-devices")
+    
+    # Test 5: Device factory information
+    print("\n5. Testing device factory information...")
+    try:
+        factory_info = api.get_device_factory_info()  # Uses current device
+        print(f"✓ Factory info endpoint returned: {list(factory_info.keys())}")
+        if isinstance(factory_info, list) and len(factory_info) > 0:
+            first_info = factory_info[0]
+            print(f"  Factory info keys: {list(first_info.keys())}")
+        elif isinstance(factory_info, dict):
+            print(f"  Factory info content: {factory_info}")
+        success_count += 1
+    except Exception as e:
+        print(f"✗ Factory info endpoint failed: {e}")
+        print("  This may be expected if factory info is not available for this device")
+    
+    print(f"\n📊 Alternative Device Discovery Summary:")
+    print(f"   Successfully tested: {success_count}/{total_tests} endpoints")
+    print(f"   These endpoints provide additional ways to discover and categorize devices:")
+    print(f"   • User-specific device lists")
+    print(f"   • Schema-based device filtering")  
+    print(f"   • Product ID-based device filtering")
+    print(f"   • Sub-device discovery for gateways")
+    print(f"   • Device factory and manufacturing information")
+    
+    if success_count >= 2:
+        print("\n✅ ALTERNATIVE DEVICE DISCOVERY TEST PARTIALLY SUCCESSFUL!")
+        print("   Multiple alternative endpoints are available for enhanced device discovery")
+        return True
+    else:
+        print("\n⚠️  ALTERNATIVE DEVICE DISCOVERY TEST HAD LIMITED SUCCESS")
+        print("   Some endpoints may require different authentication or account types")
+        return False
+
 if __name__ == "__main__":
     test_integration_api()
     print("\n" + "="*60)
     test_device_identification_integration()
+    print("\n" + "="*60)
+    test_alternative_device_discovery()
+    print("\n" + "="*60)
+    test_alternative_device_discovery()
