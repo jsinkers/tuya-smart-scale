@@ -372,59 +372,17 @@ class TuyaSmartScaleAPI:
     def get_operation_logs(self, limit: int = 20) -> Dict[str, Any]:
         """Get device operation logs using v2.0 device management endpoint.
         
-        This provides logs of device activities like online/offline events,
-        data reporting, instructions sent, and other operational events.
+        NOTE: This method is not implemented as device logs are not needed
+        for the smart scale integration. If needed in the future, refer to:
+        https://developer.tuya.com/en/docs/archived-documents/0a30fc557f?id=Ka7kjybdo0jse
         
         Args:
             limit: Maximum number of log entries to retrieve (default: 20)
         """
-        token = self.get_access_token()
-        path = f"/v2.0/cloud/thing/{self.device_id}/logs"
-        method = "GET"
-        
-        # Add query parameters for pagination
-        params = {"size": limit}
-        
-        # For GET requests with query parameters
-        body_sha256 = hashlib.sha256(b'').hexdigest()
-        
-        # Include query parameters in canonical path
-        sorted_params = sorted(params.items())
-        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
-        canonical_path = f"{path}?{param_str}"
-        str_to_sign = f"{method}\n{body_sha256}\n\n{canonical_path}"
-        
-        t = str(int(time.time() * 1000))
-        message = self.access_id + token + t + str_to_sign
-        sign = hmac.new(
-            self.access_key.encode("utf-8"),
-            msg=message.encode("utf-8"),
-            digestmod=hashlib.sha256
-        ).hexdigest().upper()
-        
-        headers = {
-            "client_id": self.access_id,
-            "access_token": token,
-            "t": t,
-            "sign": sign,
-            "sign_method": "HMAC-SHA256",
-        }
-        
-        url = f"{self.endpoint}{canonical_path}"
-        
-        print(f"GET Operation Logs:")
-        print(f"URL: {url}")
-        print(f"String to sign: {str_to_sign}")
-        print(f"Headers: {headers}")
-        
-        response = requests.get(url, headers=headers)
-        
-        print(f"Operation logs response: status={response.status_code}, text={response.text}")
-        
-        if response.status_code != 200:
-            raise Exception(f"Failed to get operation logs: {response.text}")
-            
-        return response.json().get("result", {})
+        raise NotImplementedError(
+            "Device operation logs are not implemented. "
+            "See https://developer.tuya.com/en/docs/archived-documents/0a30fc557f?id=Ka7kjybdo0jse"
+        )
 
     def get_device_identification(self) -> Dict[str, Any]:
         """Get device identification information using the v2.0 device details endpoint.
@@ -626,9 +584,14 @@ def test_integration_api():
                 print(f"  First log entry: {logs[0]}")
         else:
             print(f"  Logs result structure: {logs_result}")
+    except NotImplementedError as e:
+        print(f"ℹ️ Operation logs not implemented: {e}")
+        print("  This is expected - device logs are not needed for the smart scale integration")
     except Exception as e:
         print(f"✗ Failed to get operation logs: {e}")
-        # Don't return False here since this endpoint may not be available for all devices
+        print(f"  This is expected - the operation logs endpoint may not be available")
+        print(f"  for this device type or may require different parameters.")
+        # Don't return False here since this endpoint is not essential
     
     print("\n✓ All tests completed!")
     return True
