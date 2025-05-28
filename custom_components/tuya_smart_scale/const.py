@@ -10,7 +10,7 @@ CONF_ACCESS_KEY = "Access Key"
 CONF_DEVICE_ID = "Device ID"
 CONF_REGION = "Region"
 
-DOMAIN = "tuya_scale"
+DOMAIN = "tuya_smart_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
 
 # Region definitions
