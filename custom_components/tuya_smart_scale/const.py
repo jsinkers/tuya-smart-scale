@@ -94,12 +94,12 @@ SENSOR_TYPES = {
         "icon": "mdi:human-male-height",
         "aliases": []
     },
-    "id": {
-        "unit": None,
-        "device_class": None,
-        "icon": "mdi:identifier",
-        "aliases": []
-    },
+    #"id": {
+    #    "unit": None,
+    #    "device_class": None,
+    #    "icon": "mdi:identifier",
+    #    "aliases": []
+    #},
     "device_id": {
         "unit": None,
         "device_class": None,
