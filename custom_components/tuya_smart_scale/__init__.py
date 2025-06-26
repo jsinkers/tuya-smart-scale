@@ -25,7 +25,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         access_id=entry.data[CONF_ACCESS_ID],
         access_key=entry.data[CONF_ACCESS_KEY],
         device_id=entry.data[CONF_DEVICE_ID],
-        region=entry.data.get(CONF_REGION, "us")
+        region=entry.data.get(CONF_REGION, "eu"),
+        age=entry.data.get(CONF_AGE, DEFAULT_AGE),
+        sex=entry.data.get(CONF_SEX, DEFAULT_SEX)
     )
     
     coordinator = TuyaSmartScaleDataCoordinator(hass, api_client)

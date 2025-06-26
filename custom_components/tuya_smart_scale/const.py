@@ -9,6 +9,8 @@ CONF_ACCESS_ID = "Access ID"
 CONF_ACCESS_KEY = "Access Key"
 CONF_DEVICE_ID = "Device ID"
 CONF_REGION = "Region"
+CONF_AGE = "Age"
+CONF_SEX = "Sex"
 
 DOMAIN = "tuya_smart_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
@@ -35,6 +37,16 @@ REGIONS = {
 
 # Default region
 DEFAULT_REGION = "us"
+
+# Default user profile values
+DEFAULT_AGE = 30
+DEFAULT_SEX = 1  # 1 = male, 2 = female
+
+# Sex options for the config flow
+SEX_OPTIONS = {
+    1: "Male",
+    2: "Female"
+}
 
 # Sensor type definitions
 SENSOR_TYPES = {

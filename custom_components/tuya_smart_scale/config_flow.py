@@ -1,6 +1,9 @@
 from homeassistant import config_entries
 import voluptuous as vol
-from .const import DOMAIN, CONF_ACCESS_ID, CONF_ACCESS_KEY, CONF_REGION, REGIONS, DEFAULT_REGION, CONF_DEVICE_ID
+from .const import (
+    DOMAIN, CONF_ACCESS_ID, CONF_ACCESS_KEY, CONF_REGION, REGIONS, DEFAULT_REGION, 
+    CONF_DEVICE_ID, CONF_AGE, CONF_SEX, DEFAULT_AGE, DEFAULT_SEX, SEX_OPTIONS
+)
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -9,14 +12,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             # Validate credentials here if needed
-            return self.async_create_entry(title="Tuya Smart Scale", data=user_input)
-
-        region_options = {code: data["name"] for code, data in REGIONS.items()}
+            return self.async_create_entry(title="Tuya Smart Scale", data=user_input)        region_options = {code: data["name"] for code, data in REGIONS.items()}
         data_schema = vol.Schema({
             vol.Required(CONF_ACCESS_ID): str,  # Access ID
             vol.Required(CONF_ACCESS_KEY): str,  # Access Key
             vol.Required(CONF_REGION, default=DEFAULT_REGION): vol.In(region_options),
             vol.Required(CONF_DEVICE_ID): str,  # Device ID
+            vol.Required(CONF_AGE, default=DEFAULT_AGE): vol.All(vol.Coerce(int), vol.Range(min=1, max=120)),
+            vol.Required(CONF_SEX, default=DEFAULT_SEX): vol.In(SEX_OPTIONS),
         })
         return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
 

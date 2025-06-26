@@ -13,13 +13,14 @@ _LOGGER = logging.getLogger(__name__)
 
 class TuyaSmartScaleAPI:
     """API client for Tuya Smart Scale."""
-
-    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us"):
+    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "eu", age: int = 30, sex: int = 1):
         """Initialize the API client."""
         self.access_id = access_id
         self.access_key = access_key
         self.device_id = device_id
         self.region = region
+        self.age = age
+        self.sex = sex
         self.endpoint = REGIONS.get(region, REGIONS["eu"])["endpoint"]
         self.access_token = None
         self.token_expires = 0
@@ -210,12 +211,11 @@ class TuyaSmartScaleAPI:
                     height = float(analysis_record.get("height", 0))
                     weight = float(analysis_record.get("wegith", 0))  # Note: API uses "wegith" not "weight"
                     resistance = analysis_record.get("body_r", "0")
-                    
                     # Only get analysis if we have valid resistance data
                     if height > 0 and weight > 0 and resistance and resistance != "0":
-                        # Use reasonable defaults for age and sex if not available
-                        age = 30  # Default age
-                        sex = 1   # Default to male
+                        # Use configured age and sex values
+                        age = self.age
+                        sex = self.sex
                         
                         analysis_report = self.get_analysis_report(
                             height=height,
