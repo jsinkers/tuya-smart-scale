@@ -62,13 +62,30 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
                     if value is not None:
                         break
         
-        # Convert timestamp to datetime for timestamp sensors
-        if self.entity_type == "create_time" and value is not None:
-            try:
-                # Convert milliseconds since epoch to datetime
-                return datetime.datetime.fromtimestamp(int(value)/1000, datetime.timezone.utc)
-            except (ValueError, TypeError):
-                return None
+        # Handle special value conversions
+        if value is not None:
+            # Convert body_type integer to readable text
+            if self.entity_type == "body_type":
+                body_type_map = {
+                    0: "Underweight",
+                    1: "Normal", 
+                    2: "Overweight",
+                    3: "Obese",
+                    4: "Severely Obese"
+                }
+                try:
+                    return body_type_map.get(int(value), f"Unknown ({value})")
+                except (ValueError, TypeError):
+                    return value
+            
+            # Convert timestamp to datetime for timestamp sensors
+            elif self.entity_type == "create_time":
+                try:
+                    # Convert milliseconds since epoch to datetime
+                    return datetime.datetime.fromtimestamp(int(value)/1000, datetime.timezone.utc)
+                except (ValueError, TypeError):
+                    return None
+        
         return value
 
 async def async_setup_entry(hass, entry, async_add_entities):
