@@ -49,8 +49,17 @@ SENSOR_DISPLAY_NAMES = {
     "body_age": "Body Age",
     "body_score": "Body Score",
     "body_type": "Body Type",
-    "visceral_fat": "Visceral Fat",
-    "physical_age": "Physical Age"
+    "visceral_fat": "Visceral Fat Index",
+    "physical_age": "Physical Age",
+    "create_time": "Measurement Time",
+    "weight": "Weight",
+    "height": "Height",
+    "bones": "Bone Mass",
+    "muscle": "Muscle Mass",
+    "protein": "Protein",
+    "water": "Body Water",
+    "metabolism": "Basal Metabolic Rate",
+
 }
 
 # Sensor type definitions
@@ -152,19 +161,19 @@ SENSOR_TYPES = {
         "aliases": []
     },
     "protein": {
-        "unit": "kg",
+        "unit": "%",
         "device_class": None,
         "icon": "mdi:weight-lifter",
         "aliases": []
     },
     "metabolism": {
-        "unit": None,
+        "unit": "kcal/day",
         "device_class": None,
         "icon": "mdi:fire",
         "aliases": []
     },
     "visceral_fat": {
-        "unit": "kg",
+        "unit": None,
         "device_class": None,
         "icon": "mdi:stomach",
         "aliases": []
