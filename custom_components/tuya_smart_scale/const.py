@@ -10,7 +10,8 @@ CONF_ACCESS_KEY = "Access Key"
 CONF_DEVICE_ID = "Device ID"
 CONF_REGION = "Region"
 CONF_AGE = "Age"
-CONF_SEX = "Sex"
+CONF_BIRTHDATE = "Date of Birth (YYYY-MM-DD)"
+CONF_SEX = "sex"
 
 DOMAIN = "tuya_smart_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
@@ -40,9 +41,10 @@ DEFAULT_REGION = "us"
 
 # Default user profile values
 DEFAULT_AGE = 34
-DEFAULT_SEX = 1  # 1 = male, 2 = female
+DEFAULT_SEX = 1  # 1 = male, 2 = female (as expected by Tuya API)
+DEFAULT_BIRTHDATE = "1990-01-01"  # Default birthdate as string in YYYY-MM-DD format
 
-# Sex options for the config flow
+# Sex options for UI (maps display names to API values)
 SEX_OPTIONS = {
     1: "Male",
     2: "Female"
