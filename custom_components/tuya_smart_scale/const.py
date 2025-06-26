@@ -18,6 +18,10 @@ UPDATE_INTERVAL = 60  # Update every 60 seconds
 
 # Region definitions
 REGIONS = {
+    "eu": {
+        "name": "Europe",
+        "endpoint": "https://openapi.tuyaeu.com",
+    },
     "cn": {
         "name": "China",
         "endpoint": "https://openapi.tuyacn.com",
@@ -26,10 +30,6 @@ REGIONS = {
         "name": "Americas",
         "endpoint": "https://openapi.tuyaus.com",
     },
-    "eu": {
-        "name": "Europe",
-        "endpoint": "https://openapi.tuyaeu.com",
-    },
     "in": {
         "name": "India",
         "endpoint": "https://openapi.tuyain.com",
@@ -37,7 +37,7 @@ REGIONS = {
 }
 
 # Default region
-DEFAULT_REGION = "us"
+DEFAULT_REGION = "eu"
 
 # Default user profile values
 DEFAULT_AGE = 34
