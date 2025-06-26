@@ -4,6 +4,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import datetime
 
 from .const import DOMAIN, SENSOR_TYPES, CONF_DEVICE_ID, SENSOR_DISPLAY_NAMES
+from .utils import calculate_age_from_birthdate, calculate_age_from_birthdate
 
 class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Tuya Smart Scale sensor for a specific user."""
@@ -47,13 +48,7 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
             # Get birthdate from coordinator's config
             birthdate_str = getattr(self.coordinator, 'birthdate', None)
             if birthdate_str:
-                try:
-                    birth_date = datetime.datetime.strptime(birthdate_str, "%Y-%m-%d").date()
-                    today = datetime.date.today()
-                    age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-                    return age
-                except (ValueError, TypeError):
-                    return None
+                return calculate_age_from_birthdate(birthdate_str)
             return None
         
         # Get the sensor config for this entity type

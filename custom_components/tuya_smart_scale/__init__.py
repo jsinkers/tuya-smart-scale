@@ -24,17 +24,6 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-def calculate_age_from_birthdate(birthdate_str: str) -> int:
-    """Calculate current age from birthdate string."""
-    try:
-        birthdate = datetime.strptime(birthdate_str, "%Y-%m-%d").date()
-        today = date.today()
-        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-        return age
-    except (ValueError, TypeError):
-        _LOGGER.warning(f"Invalid birthdate format: {birthdate_str}, using default age 30")
-        return 30
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tuya Smart Scale from a config entry."""
     
