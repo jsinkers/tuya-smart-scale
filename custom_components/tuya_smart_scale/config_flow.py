@@ -12,7 +12,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             # Validate credentials here if needed
-            return self.async_create_entry(title="Tuya Smart Scale", data=user_input)        region_options = {code: data["name"] for code, data in REGIONS.items()}
+            return self.async_create_entry(title="Tuya Smart Scale", data=user_input)
+
+        region_options = {code: data["name"] for code, data in REGIONS.items()}
         data_schema = vol.Schema({
             vol.Required(CONF_ACCESS_ID): str,  # Access ID
             vol.Required(CONF_ACCESS_KEY): str,  # Access Key
