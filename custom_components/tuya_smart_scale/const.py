@@ -49,7 +49,8 @@ SENSOR_DISPLAY_NAMES = {
     "body_age": "Body Age",
     "body_score": "Body Score",
     "body_type": "Body Type",
-    "visceral_fat": "Visceral Fat"
+    "visceral_fat": "Visceral Fat",
+    "physical_age": "Physical Age"
 }
 
 # Sensor type definitions
@@ -172,6 +173,12 @@ SENSOR_TYPES = {
         "unit": "%",
         "device_class": None,
         "icon": "mdi:water-percent",
+        "aliases": []
+    },
+    "physical_age": {
+        "unit": "years",
+        "device_class": None,
+        "icon": "mdi:calendar-today",
         "aliases": []
     },
 }

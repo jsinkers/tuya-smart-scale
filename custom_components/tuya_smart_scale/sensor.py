@@ -21,7 +21,7 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
         display_name = SENSOR_DISPLAY_NAMES.get(entity_type, entity_type.replace('_', ' ').title())
         self._attr_name = f"{display_name} ({nickname or user_id})"
         
-        # Find the canonical sensor type for this entity
+        # Find the canonical sensor type for this entity type
         canonical_type = entity_type
         for sensor_type, config in SENSOR_TYPES.items():
             if entity_type == sensor_type or entity_type in config["aliases"]:
@@ -40,6 +40,21 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
         """Return the state of the sensor."""
         user_data = self.coordinator.data.get(self.user_id)
         if not user_data:
+            return None
+        
+        # Handle special calculated sensors
+        if self.entity_type == "physical_age":
+            # Get birthdate from coordinator's config
+            birthdate_str = getattr(self.coordinator, 'birthdate', None)
+            if birthdate_str:
+                try:
+                    from datetime import datetime, date
+                    birth_date = datetime.strptime(birthdate_str, "%Y-%m-%d").date()
+                    today = date.today()
+                    age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                    return age
+                except (ValueError, TypeError):
+                    return None
             return None
         
         # Get the sensor config for this entity type
