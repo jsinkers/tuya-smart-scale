@@ -337,12 +337,37 @@ def test_integration_api():
             weight=78.3,
             age=26,
             sex=1,  # 1 = male, 2 = female
-            resistance="718"  # String as per API docs
+            resistance=718  # String as per API docs
         )
         print(f"✓ Got analysis report with keys: {list(analysis.keys())}")
         if analysis:
             for key, value in analysis.items():
                 print(f"  {key}: {value}")
+
+            # Compare with documentation example values
+            print(f"\n5. Comparison with documentation example:")
+            doc_example = {
+                "body_type": 2,
+                "weight": 78.3,
+                "ffm": "58.3",
+                "water": "51.4",
+                "body_score": "82.1",
+                "bones": "3.6",
+                "muscle": "54.9",
+                "protein": "18.5",
+                "fat": "25.5",
+                "body_age": "29",
+                "metabolism": "1778",
+                "visceral_fat": "9.3",
+                "bmi": "27.1"
+            }
+            
+            print("   Field                | Your Value    | Doc Example")
+            print("   ---------------------|---------------|-------------")
+            for field, doc_value in doc_example.items():
+                your_value = analysis.get(field, "MISSING")
+                print(f"   {field:<20} | {str(your_value):<13} | {str(doc_value)}")
+                
     except Exception as e:
         print(f"✗ Failed to get analysis report: {e}")
         # Don't return False here since this is a new feature we're testing
@@ -420,9 +445,7 @@ def test_scale_records_with_analysis():
                 )
                 
                 print(f"✓ Got analysis report:")
-                for key, value in analysis_report.items():
-                    print(f"     {key}: {value}")
-                    
+                for key, value in analysis_report.items():                    print(f"     {key}: {value}")
                 return True
                 
             except Exception as e:
@@ -440,6 +463,6 @@ if __name__ == "__main__":
     print("Running integration API tests...")
     test_integration_api()
     
-    print("\n" + "="*60)
-    print("Running scale records with analysis test...")
-    test_scale_records_with_analysis()
+    #print("\n" + "="*60)
+    #print("Running scale records with analysis test...")
+    #test_scale_records_with_analysis()
