@@ -26,6 +26,8 @@ ACCESS_ID = os.environ.get("ACCESS_ID")
 ACCESS_KEY = os.environ.get("ACCESS_KEY") 
 DEVICE_ID = os.environ.get("DEVICE_ID")
 REGION = os.environ.get("TUYA_REGION", "eu")
+BIRTHDATE = os.environ.get("BIRTHDATE", "1990-01-01")
+SEX = int(os.environ.get("SEX", "1"))
 
 # Verify credentials are loaded
 if not ACCESS_ID or not ACCESS_KEY or not DEVICE_ID:
@@ -47,12 +49,14 @@ REGIONS = {
 class TuyaSmartScaleAPI:
     """API client for Tuya Smart Scale."""
 
-    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us"):
+    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us", birthdate: str = "1990-01-01", sex: int = 1):
         """Initialize the API client."""
         self.access_id = access_id
         self.access_key = access_key
         self.device_id = device_id
         self.region = region
+        self.birthdate = birthdate
+        self.sex = sex
         self.endpoint = REGIONS.get(region, REGIONS["eu"])["endpoint"]
         self.access_token = None
         self.token_expires = 0
@@ -270,6 +274,18 @@ class TuyaSmartScaleAPI:
             
         return response.json().get("result", {})
 
+    def _calculate_age(self) -> int:
+        """Calculate current age from stored birthdate."""
+        try:
+            from datetime import datetime, date
+            birth_date = datetime.strptime(self.birthdate, "%Y-%m-%d").date()
+            today = date.today()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            return age
+        except (ValueError, TypeError):
+            print(f"Invalid birthdate format: {self.birthdate}, using default age 30")
+            return 30
+
 def test_integration_api():
     """Test the integration API class."""
     print(f"Testing integration API with device {DEVICE_ID} in region {REGION}")
@@ -279,7 +295,9 @@ def test_integration_api():
         access_id=ACCESS_ID,
         access_key=ACCESS_KEY,
         device_id=DEVICE_ID,
-        region=REGION
+        region=REGION,
+        birthdate=BIRTHDATE,
+        sex=SEX
     )
     
     # Test getting access token
@@ -335,13 +353,19 @@ def test_scale_records_with_analysis():
     """Test fetching scale records and getting analysis report for the last record with resistance."""
     print(f"\nTesting scale records with analysis for device {DEVICE_ID}")
     
-    # Create API client
+    # Initialize API client with birthdate and sex
     api = TuyaSmartScaleAPI(
         access_id=ACCESS_ID,
         access_key=ACCESS_KEY,
         device_id=DEVICE_ID,
-        region=REGION
+        region=REGION,
+        birthdate=BIRTHDATE,
+        sex=SEX
     )
+    
+    # Use calculated age for analysis report
+    current_age = api._calculate_age()
+    print(f"Using calculated age: {current_age} years")
     
     print("\n1. Fetching scale records...")
     try:
@@ -349,10 +373,12 @@ def test_scale_records_with_analysis():
         print(f"✓ Got {len(records)} scale records")
         
         if not records:
-            print("✗ No records found")
-            return False
-            
-        # Find the last record with resistance data
+            print("No scale records found!")
+            return
+        
+        print(f"\nFound {len(records)} scale records")
+        
+        # Find the most recent record with resistance data
         record_with_resistance = None
         for record in records:
             resistance = record.get("body_r")
@@ -388,8 +414,8 @@ def test_scale_records_with_analysis():
                 analysis_report = api.get_analysis_report(
                     height=height,
                     weight=weight,
-                    age=34,  # Default age
-                    sex=1,   # Default to male
+                    age=current_age,  # Use calculated age
+                    sex=SEX,         # Use configured sex
                     resistance=resistance
                 )
                 
