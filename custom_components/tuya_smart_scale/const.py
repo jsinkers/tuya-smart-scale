@@ -39,7 +39,7 @@ REGIONS = {
 DEFAULT_REGION = "us"
 
 # Default user profile values
-DEFAULT_AGE = 30
+DEFAULT_AGE = 34
 DEFAULT_SEX = 1  # 1 = male, 2 = female
 
 # Sex options for the config flow
