@@ -26,7 +26,9 @@ class TuyaSmartScaleAPI:
         self.access_token = None
         self.token_expires = 0
         self.sign_method = "HMAC-SHA256"
-    
+        
+        _LOGGER.info(f"Initialized TuyaSmartScaleAPI with region: {region}, endpoint: {self.endpoint}, device_id: {device_id}")
+
     def _calculate_age(self) -> int:
         """Calculate current age from stored birthdate."""
         try:

@@ -29,9 +29,10 @@ class TuyaSmartScaleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
+        errors = {}  # Initialize errors dictionary at the start
+        
         if user_input is not None:
             # Validate the user input
-            errors = {}
             
             try:
                 # Test the connection with the provided credentials

@@ -11,29 +11,17 @@ CONF_DEVICE_ID = "Device ID"
 CONF_REGION = "Region"
 CONF_AGE = "Age"
 CONF_BIRTHDATE = "Date of Birth (YYYY-MM-DD)"
-CONF_SEX = "sex"
+CONF_SEX = "Sex"
 
 DOMAIN = "tuya_smart_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
 
 # Region definitions
 REGIONS = {
-    "eu": {
-        "name": "Europe",
-        "endpoint": "https://openapi.tuyaeu.com",
-    },
-    "cn": {
-        "name": "China",
-        "endpoint": "https://openapi.tuyacn.com",
-    },
-    "us": {
-        "name": "Americas",
-        "endpoint": "https://openapi.tuyaus.com",
-    },
-    "in": {
-        "name": "India",
-        "endpoint": "https://openapi.tuyain.com",
-    },
+    "us": {"name": "United States", "endpoint": "https://openapi.tuyaus.com"},
+    "eu": {"name": "Europe", "endpoint": "https://openapi.tuyaeu.com"},
+    "cn": {"name": "China", "endpoint": "https://openapi.tuyacn.com"},
+    "in": {"name": "India", "endpoint": "https://openapi.tuyain.com"}
 }
 
 # Default region
