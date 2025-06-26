@@ -16,7 +16,7 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
         self.nickname = nickname
         self.entity_type = entity_type
         self._attr_unique_id = f"{device_id}_{user_id}_{entity_type}"
-        self._attr_name = f"Tuya Scale {nickname or user_id} {entity_type.replace('_', ' ').title()}"
+        self._attr_name = f"{entity_type.replace('_', ' ').title()} ({nickname or user_id})"
         
         # Find the canonical sensor type for this entity
         canonical_type = entity_type
