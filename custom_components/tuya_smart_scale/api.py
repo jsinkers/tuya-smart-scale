@@ -5,6 +5,7 @@ import time
 import hmac
 import hashlib
 import json
+from datetime import datetime, date
 from typing import Dict, Any, List
 
 from .const import REGIONS, SMART_SCALE_DEVICE_TYPE, CONF_ACCESS_ID, CONF_ACCESS_KEY
@@ -13,17 +14,31 @@ _LOGGER = logging.getLogger(__name__)
 
 class TuyaSmartScaleAPI:
     """API client for Tuya Smart Scale."""
-
-    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us"):
+    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "eu", birthdate: str = "1990-01-01", sex: int = 1):
         """Initialize the API client."""
         self.access_id = access_id
         self.access_key = access_key
         self.device_id = device_id
         self.region = region
+        self.birthdate = birthdate
+        self.sex = sex
         self.endpoint = REGIONS.get(region, REGIONS["eu"])["endpoint"]
         self.access_token = None
         self.token_expires = 0
         self.sign_method = "HMAC-SHA256"
+        
+        _LOGGER.info(f"Initialized TuyaSmartScaleAPI with region: {region}, endpoint: {self.endpoint}, device_id: {device_id}")
+
+    def _calculate_age(self) -> int:
+        """Calculate current age from stored birthdate."""
+        try:
+            birth_date = datetime.strptime(self.birthdate, "%Y-%m-%d").date()
+            today = date.today()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            return age
+        except (ValueError, TypeError):
+            _LOGGER.warning(f"Invalid birthdate format: {self.birthdate}, using default age 30")
+            return 30
 
     def _sign_request(self, method, path, access_token=None, params=None, body=None):
         """Sign the request using the correct Tuya v2.0 signature logic.
@@ -210,12 +225,11 @@ class TuyaSmartScaleAPI:
                     height = float(analysis_record.get("height", 0))
                     weight = float(analysis_record.get("wegith", 0))  # Note: API uses "wegith" not "weight"
                     resistance = analysis_record.get("body_r", "0")
-                    
                     # Only get analysis if we have valid resistance data
                     if height > 0 and weight > 0 and resistance and resistance != "0":
-                        # Use reasonable defaults for age and sex if not available
-                        age = 30  # Default age
-                        sex = 1   # Default to male
+                        # Calculate current age from birthdate
+                        age = self._calculate_age()
+                        sex = self.sex
                         
                         analysis_report = self.get_analysis_report(
                             height=height,
@@ -225,7 +239,7 @@ class TuyaSmartScaleAPI:
                             resistance=resistance
                         )
                         latest_record["analysis_report"] = analysis_report
-                        _LOGGER.debug(f"Added analysis report for user {user_id} using record with resistance {resistance}")
+                        _LOGGER.debug(f"Added analysis report for user {user_id} using age {age}, sex {sex}, resistance {resistance}")
                     else:
                         _LOGGER.debug(f"Skipping analysis report for record - insufficient data: height={height}, weight={weight}, resistance={resistance}")
                 except Exception as e:

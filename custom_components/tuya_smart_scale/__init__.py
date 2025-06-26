@@ -1,5 +1,6 @@
 """The Tuya Smart Scale integration."""
 import logging
+from datetime import datetime, date
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -7,10 +8,14 @@ from homeassistant.const import Platform
 
 from .const import (
     DOMAIN, 
-    CONF_ACCESS_ID,  # now 'access_id'
-    CONF_ACCESS_KEY,  # now 'access_key'
+    CONF_ACCESS_ID,
+    CONF_ACCESS_KEY,
     CONF_DEVICE_ID, 
-    CONF_REGION
+    CONF_REGION,
+    CONF_BIRTHDATE,
+    CONF_SEX,
+    DEFAULT_SEX,
+    DEFAULT_BIRTHDATE
 )
 from .api import TuyaSmartScaleAPI
 from .coordinator import TuyaSmartScaleDataCoordinator
@@ -21,11 +26,14 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tuya Smart Scale from a config entry."""
+    
     api_client = TuyaSmartScaleAPI(
         access_id=entry.data[CONF_ACCESS_ID],
         access_key=entry.data[CONF_ACCESS_KEY],
         device_id=entry.data[CONF_DEVICE_ID],
-        region=entry.data.get(CONF_REGION, "us")
+        region=entry.data.get(CONF_REGION, "eu"),
+        birthdate=entry.data.get(CONF_BIRTHDATE, DEFAULT_BIRTHDATE),
+        sex=entry.data.get(CONF_SEX, DEFAULT_SEX)
     )
     
     coordinator = TuyaSmartScaleDataCoordinator(hass, api_client)

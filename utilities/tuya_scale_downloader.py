@@ -28,6 +28,7 @@ ACCESS_KEY = os.environ.get('ACCESS_KEY')
 DEVICE_ID = os.environ.get('DEVICE_ID')
 REGION = os.environ.get('TUYA_REGION', 'eu')
 BIRTHDATE = os.environ.get('BIRTHDATE')  # Format: YYYY-MM-DD
+SEX = int(os.environ.get('SEX', '1'))  # 1 = male, 2 = female
 DATA_FILE = os.environ.get('DATA_FILE', 'scale_data.json')
 DEBUG_LOGS = os.environ.get('DEBUG_LOGS', 'false').lower() == 'true'
 
@@ -297,10 +298,9 @@ def enrich_with_analysis_reports(api, device_id, records, birth_date):
         if not weight or not height or resistance == '0':
             logger.debug(f"Skipping analysis for record {record.get('id')} - insufficient data")
             continue
-            
         try:
             age = age_at_time(record['create_time'], birth_date)
-            sex = 1  # Default to male, could be made configurable
+            sex = SEX  # Use configured sex value
             
             analysis_report = api.get_analysis_report(
                 device_id=device_id,

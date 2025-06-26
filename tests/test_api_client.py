@@ -26,6 +26,8 @@ ACCESS_ID = os.environ.get("ACCESS_ID")
 ACCESS_KEY = os.environ.get("ACCESS_KEY") 
 DEVICE_ID = os.environ.get("DEVICE_ID")
 REGION = os.environ.get("TUYA_REGION", "eu")
+BIRTHDATE = os.environ.get("BIRTHDATE", "1990-01-01")
+SEX = int(os.environ.get("SEX", "1"))
 
 # Verify credentials are loaded
 if not ACCESS_ID or not ACCESS_KEY or not DEVICE_ID:
@@ -47,12 +49,14 @@ REGIONS = {
 class TuyaSmartScaleAPI:
     """API client for Tuya Smart Scale."""
 
-    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us"):
+    def __init__(self, access_id: str, access_key: str, device_id: str, region: str = "us", birthdate: str = "1990-01-01", sex: int = 1):
         """Initialize the API client."""
         self.access_id = access_id
         self.access_key = access_key
         self.device_id = device_id
         self.region = region
+        self.birthdate = birthdate
+        self.sex = sex
         self.endpoint = REGIONS.get(region, REGIONS["eu"])["endpoint"]
         self.access_token = None
         self.token_expires = 0
@@ -270,6 +274,18 @@ class TuyaSmartScaleAPI:
             
         return response.json().get("result", {})
 
+    def _calculate_age(self) -> int:
+        """Calculate current age from stored birthdate."""
+        try:
+            from datetime import datetime, date
+            birth_date = datetime.strptime(self.birthdate, "%Y-%m-%d").date()
+            today = date.today()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            return age
+        except (ValueError, TypeError):
+            print(f"Invalid birthdate format: {self.birthdate}, using default age 30")
+            return 30
+
 def test_integration_api():
     """Test the integration API class."""
     print(f"Testing integration API with device {DEVICE_ID} in region {REGION}")
@@ -279,7 +295,9 @@ def test_integration_api():
         access_id=ACCESS_ID,
         access_key=ACCESS_KEY,
         device_id=DEVICE_ID,
-        region=REGION
+        region=REGION,
+        birthdate=BIRTHDATE,
+        sex=SEX
     )
     
     # Test getting access token
@@ -328,9 +346,100 @@ def test_integration_api():
     except Exception as e:
         print(f"✗ Failed to get analysis report: {e}")
         # Don't return False here since this is a new feature we're testing
-    
     print("\n✓ All tests completed!")
     return True
 
+def test_scale_records_with_analysis():
+    """Test fetching scale records and getting analysis report for the last record with resistance."""
+    print(f"\nTesting scale records with analysis for device {DEVICE_ID}")
+    
+    # Initialize API client with birthdate and sex
+    api = TuyaSmartScaleAPI(
+        access_id=ACCESS_ID,
+        access_key=ACCESS_KEY,
+        device_id=DEVICE_ID,
+        region=REGION,
+        birthdate=BIRTHDATE,
+        sex=SEX
+    )
+    
+    # Use calculated age for analysis report
+    current_age = api._calculate_age()
+    print(f"Using calculated age: {current_age} years")
+    
+    print("\n1. Fetching scale records...")
+    try:
+        records = api.get_scale_records(limit=20)  # Get more records to find one with resistance
+        print(f"✓ Got {len(records)} scale records")
+        
+        if not records:
+            print("No scale records found!")
+            return
+        
+        print(f"\nFound {len(records)} scale records")
+        
+        # Find the most recent record with resistance data
+        record_with_resistance = None
+        for record in records:
+            resistance = record.get("body_r")
+            if resistance and resistance != "0":
+                record_with_resistance = record
+                break
+        
+        if not record_with_resistance:
+            print("✗ No records found with resistance data")
+            print("Available records:")
+            for i, record in enumerate(records[:3]):  # Show first 3 records
+                print(f"  Record {i+1}: {record}")
+            return False
+            
+        print(f"\n2. Found record with resistance data:")
+        print(f"   Record details:")
+        for key, value in record_with_resistance.items():
+            print(f"     {key}: {value}")
+            
+        # Extract data for analysis report
+        height = float(record_with_resistance.get("height", 0))
+        weight = float(record_with_resistance.get("wegith", 0))  # Note: API uses "wegith" not "weight"
+        resistance = record_with_resistance.get("body_r", "0")
+        
+        print(f"\n3. Extracted data for analysis:")
+        print(f"   Height: {height} cm")
+        print(f"   Weight: {weight} kg")
+        print(f"   Resistance: {resistance} Ω")
+        
+        if height > 0 and weight > 0 and resistance and resistance != "0":
+            print(f"\n4. Requesting analysis report...")
+            try:
+                analysis_report = api.get_analysis_report(
+                    height=height,
+                    weight=weight,
+                    age=current_age,  # Use calculated age
+                    sex=SEX,         # Use configured sex
+                    resistance=resistance
+                )
+                
+                print(f"✓ Got analysis report:")
+                for key, value in analysis_report.items():
+                    print(f"     {key}: {value}")
+                    
+                return True
+                
+            except Exception as e:
+                print(f"✗ Failed to get analysis report: {e}")
+                return False
+        else:
+            print(f"✗ Insufficient data for analysis: height={height}, weight={weight}, resistance={resistance}")
+            return False
+            
+    except Exception as e:
+        print(f"✗ Failed to fetch scale records: {e}")
+        return False
+
 if __name__ == "__main__":
+    print("Running integration API tests...")
     test_integration_api()
+    
+    print("\n" + "="*60)
+    print("Running scale records with analysis test...")
+    test_scale_records_with_analysis()

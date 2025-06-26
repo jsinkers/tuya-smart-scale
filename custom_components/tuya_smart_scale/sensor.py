@@ -3,7 +3,8 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import datetime
 
-from .const import DOMAIN, SENSOR_TYPES, CONF_DEVICE_ID
+from .const import DOMAIN, SENSOR_TYPES, CONF_DEVICE_ID, SENSOR_DISPLAY_NAMES
+from .utils import calculate_age_from_birthdate, calculate_age_from_birthdate
 
 class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Tuya Smart Scale sensor for a specific user."""
@@ -16,9 +17,12 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
         self.nickname = nickname
         self.entity_type = entity_type
         self._attr_unique_id = f"{device_id}_{user_id}_{entity_type}"
-        self._attr_name = f"Tuya Scale {nickname or user_id} {entity_type.replace('_', ' ').title()}"
         
-        # Find the canonical sensor type for this entity
+        # Use display name if available, otherwise use title case conversion
+        display_name = SENSOR_DISPLAY_NAMES.get(entity_type, entity_type.replace('_', ' ').title())
+        self._attr_name = f"{display_name} ({nickname or user_id})"
+        
+        # Find the canonical sensor type for this entity type
         canonical_type = entity_type
         for sensor_type, config in SENSOR_TYPES.items():
             if entity_type == sensor_type or entity_type in config["aliases"]:
@@ -37,6 +41,14 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
         """Return the state of the sensor."""
         user_data = self.coordinator.data.get(self.user_id)
         if not user_data:
+            return None
+        
+        # Handle special calculated sensors
+        if self.entity_type == "physical_age":
+            # Get birthdate from coordinator's config
+            birthdate_str = getattr(self.coordinator, 'birthdate', None)
+            if birthdate_str:
+                return calculate_age_from_birthdate(birthdate_str)
             return None
         
         # Get the sensor config for this entity type
@@ -62,13 +74,30 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
                     if value is not None:
                         break
         
-        # Convert timestamp to datetime for timestamp sensors
-        if self.entity_type == "create_time" and value is not None:
-            try:
-                # Convert milliseconds since epoch to datetime
-                return datetime.datetime.fromtimestamp(int(value)/1000, datetime.timezone.utc)
-            except (ValueError, TypeError):
-                return None
+        # Handle special value conversions
+        if value is not None:
+            # Convert body_type integer to readable text
+            if self.entity_type == "body_type":
+                body_type_map = {
+                    0: "Underweight",
+                    1: "Normal", 
+                    2: "Overweight",
+                    3: "Obese",
+                    4: "Severely Obese"
+                }
+                try:
+                    return body_type_map.get(int(value), f"Unknown ({value})")
+                except (ValueError, TypeError):
+                    return value
+            
+            # Convert timestamp to datetime for timestamp sensors
+            elif self.entity_type == "create_time":
+                try:
+                    # Convert milliseconds since epoch to datetime
+                    return datetime.datetime.fromtimestamp(int(value)/1000, datetime.timezone.utc)
+                except (ValueError, TypeError):
+                    return None
+        
         return value
 
 async def async_setup_entry(hass, entry, async_add_entities):

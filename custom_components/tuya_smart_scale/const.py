@@ -9,32 +9,58 @@ CONF_ACCESS_ID = "Access ID"
 CONF_ACCESS_KEY = "Access Key"
 CONF_DEVICE_ID = "Device ID"
 CONF_REGION = "Region"
+CONF_AGE = "Age"
+CONF_BIRTHDATE = "Date of Birth (YYYY-MM-DD)"
+CONF_SEX = "Sex"
 
 DOMAIN = "tuya_smart_scale"
 UPDATE_INTERVAL = 60  # Update every 60 seconds
 
 # Region definitions
 REGIONS = {
-    "cn": {
-        "name": "China",
-        "endpoint": "https://openapi.tuyacn.com",
-    },
-    "us": {
-        "name": "Americas",
-        "endpoint": "https://openapi.tuyaus.com",
-    },
-    "eu": {
-        "name": "Europe",
-        "endpoint": "https://openapi.tuyaeu.com",
-    },
-    "in": {
-        "name": "India",
-        "endpoint": "https://openapi.tuyain.com",
-    },
+    "us": {"name": "United States", "endpoint": "https://openapi.tuyaus.com"},
+    "eu": {"name": "Europe", "endpoint": "https://openapi.tuyaeu.com"},
+    "cn": {"name": "China", "endpoint": "https://openapi.tuyacn.com"},
+    "in": {"name": "India", "endpoint": "https://openapi.tuyain.com"}
 }
 
 # Default region
-DEFAULT_REGION = "us"
+DEFAULT_REGION = "eu"
+
+# Default user profile values
+DEFAULT_AGE = 34
+DEFAULT_SEX = 1  # 1 = male, 2 = female (as expected by Tuya API)
+DEFAULT_BIRTHDATE = "1990-01-01"  # Default birthdate as string in YYYY-MM-DD format
+
+# Sex options for UI (maps display names to API values)
+SEX_OPTIONS = {
+    1: "Male",
+    2: "Female"
+}
+
+# Display names for sensors (overrides default title case conversion)
+SENSOR_DISPLAY_NAMES = {
+    "ffm": "Fat-free Mass",
+    "bmi": "BMI",
+    "body_r": "Body Resistance",
+    "user_id": "User ID",
+    "device_id": "Device ID",
+    "body_fat": "Body Fat",
+    "body_age": "Body Age",
+    "body_score": "Body Score",
+    "body_type": "Body Type",
+    "visceral_fat": "Visceral Fat Index",
+    "physical_age": "Physical Age",
+    "create_time": "Measurement Time",
+    "weight": "Weight",
+    "height": "Height",
+    "bones": "Bone Mass",
+    "muscle": "Muscle Mass",
+    "protein": "Protein",
+    "water": "Body Water",
+    "metabolism": "Basal Metabolic Rate",
+
+}
 
 # Sensor type definitions
 SENSOR_TYPES = {
@@ -68,12 +94,12 @@ SENSOR_TYPES = {
         "icon": "mdi:human-male-height",
         "aliases": []
     },
-    "id": {
-        "unit": None,
-        "device_class": None,
-        "icon": "mdi:identifier",
-        "aliases": []
-    },
+    #"id": {
+    #    "unit": None,
+    #    "device_class": None,
+    #    "icon": "mdi:identifier",
+    #    "aliases": []
+    #},
     "device_id": {
         "unit": None,
         "device_class": None,
@@ -135,19 +161,19 @@ SENSOR_TYPES = {
         "aliases": []
     },
     "protein": {
-        "unit": "kg",
+        "unit": "%",
         "device_class": None,
         "icon": "mdi:weight-lifter",
         "aliases": []
     },
     "metabolism": {
-        "unit": None,
+        "unit": "kcal/day",
         "device_class": None,
         "icon": "mdi:fire",
         "aliases": []
     },
     "visceral_fat": {
-        "unit": "kg",
+        "unit": None,
         "device_class": None,
         "icon": "mdi:stomach",
         "aliases": []
@@ -156,6 +182,12 @@ SENSOR_TYPES = {
         "unit": "%",
         "device_class": None,
         "icon": "mdi:water-percent",
+        "aliases": []
+    },
+    "physical_age": {
+        "unit": "years",
+        "device_class": None,
+        "icon": "mdi:calendar-today",
         "aliases": []
     },
 }

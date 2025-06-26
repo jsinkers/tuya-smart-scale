@@ -62,7 +62,11 @@ You need Tuya Cloud API credentials:
    - Access Key  
    - Device ID
    - Region
+   - Age
+   - Sex
 4. Click **Submit**
+
+> **Note**: Age and sex parameters are used for accurate body composition analysis. For best results, enter your actual age and biological sex as these significantly affect calculations for body fat percentage, muscle mass, BMR, and other metrics.
 
 The integration will automatically:
 - Validate your credentials

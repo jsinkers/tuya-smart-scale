@@ -6,21 +6,23 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, UPDATE_INTERVAL
+from .api import TuyaSmartScaleAPI
 
 _LOGGER = logging.getLogger(__name__)
 
 class TuyaSmartScaleDataCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching Tuya smart scale data."""
+    """Class to manage fetching data from the Tuya Smart Scale API."""
 
-    def __init__(self, hass: HomeAssistant, api_client):
-        """Initialize the coordinator."""
+    def __init__(self, hass: HomeAssistant, api_client: TuyaSmartScaleAPI):
+        """Initialize."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
-        self.api_client = api_client
+        self.api = api_client
+        self.birthdate = api_client.birthdate  # Store birthdate for physical age calculation
         self.data = {}
     
     @property
@@ -34,7 +36,7 @@ class TuyaSmartScaleDataCoordinator(DataUpdateCoordinator):
         """Fetch data from Tuya API."""
         try:
             return await self.hass.async_add_executor_job(
-                self.api_client.get_latest_data
+                self.api.get_latest_data  # Fixed: should be self.api, not self.api_client
             )
         except Exception as err:
             raise UpdateFailed(f"Error communicating with Tuya API: {err}")
