@@ -38,6 +38,20 @@ SEX_OPTIONS = {
     2: "Female"
 }
 
+# Display names for sensors (overrides default title case conversion)
+SENSOR_DISPLAY_NAMES = {
+    "ffm": "Fat-free Mass",
+    "bmi": "BMI",
+    "body_r": "Body Resistance",
+    "user_id": "User ID",
+    "device_id": "Device ID",
+    "body_fat": "Body Fat",
+    "body_age": "Body Age",
+    "body_score": "Body Score",
+    "body_type": "Body Type",
+    "visceral_fat": "Visceral Fat"
+}
+
 # Sensor type definitions
 SENSOR_TYPES = {
     "weight": {
