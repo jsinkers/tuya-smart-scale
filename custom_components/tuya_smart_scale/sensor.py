@@ -48,9 +48,8 @@ class TuyaSmartScaleSensor(CoordinatorEntity, SensorEntity):
             birthdate_str = getattr(self.coordinator, 'birthdate', None)
             if birthdate_str:
                 try:
-                    from datetime import datetime, date
-                    birth_date = datetime.strptime(birthdate_str, "%Y-%m-%d").date()
-                    today = date.today()
+                    birth_date = datetime.datetime.strptime(birthdate_str, "%Y-%m-%d").date()
+                    today = datetime.date.today()
                     age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
                     return age
                 except (ValueError, TypeError):
